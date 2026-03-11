@@ -1,61 +1,155 @@
 # E-Commerce Delivery Delay Prediction
 
-<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
-    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+## Overview
 
-Predict late deliveries using the Olist e-commerce dataset
+This project builds a machine learning system that predicts whether an e-commerce order will be delivered late. Early detection allows a marketplace platform to proactively intervene by prioritizing shipments, notifying customers, or monitoring seller performance.
 
-## Project Organization
+The project uses the **Olist Brazilian E-Commerce Dataset**, a relational dataset containing approximately 100,000 orders distributed across multiple tables. Instead of treating the dataset as separate CSV files, the tables are loaded into a relational database and transformed into a machine learning dataset using SQL queries.
 
-```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
-├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
-│
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
-│
-├── models             <- Trained and serialized models, model predictions, or model summaries
-│
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
-│
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         delivery_delay_prediction and configuration for tools like black
-│
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-│
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── delivery_delay_prediction   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes delivery_delay_prediction a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
-```
+---
 
---------
+## Problem Statement
 
+Late deliveries negatively impact customer satisfaction and often lead to poor reviews, refunds, and customer churn. The goal of this project is to build a classification model that predicts whether an order will arrive later than its estimated delivery date.
+
+### Target Variable
+
+**Late Delivery**
+- `1` = Order delivered after the estimated delivery date
+- `0` = Order delivered on or before the estimated date
+
+---
+
+## Dataset
+
+**Dataset**: Olist Brazilian E-Commerce Dataset (Kaggle)
+
+The dataset represents a real-world e-commerce marketplace database with multiple relational tables:
+
+- Customers
+- Orders
+- Order Items
+- Order Payments
+- Order Reviews
+- Sellers
+- Products
+- Geolocation
+
+Each table represents a different component of the marketplace system.
+
+---
+
+## Data Engineering Pipeline
+
+### Database Construction
+
+The nine dataset tables were first loaded into a **MySQL database**. This simulates a realistic production data environment where transactional data is stored in relational databases rather than flat files.
+
+### SQL Data Wrangling
+
+The modeling dataset was constructed using **SQL JOIN queries and aggregations** across multiple tables. Key operations included:
+
+- Joining orders with customers, sellers, and product data
+- Aggregating historical seller and customer statistics
+- Combining logistics and payment information at the order level
+- Generating derived features through SQL transformations
+
+The resulting analytical dataset represents one row per order and serves as the input for machine learning models.
+
+---
+
+## Feature Engineering
+
+### Customer Features
+- Number of previous purchases
+- Historical review behavior
+- Purchase frequency
+
+### Seller Features
+- Historical delivery delay rate
+- Average review score
+- Seller reliability indicators
+
+### Logistics Features
+- Seller–customer geographic distance
+- Shipping performance by region
+
+### Order Features
+- Number of items
+- Total order value
+- Product categories
+- Payment type
+
+### Temporal Features
+- Order month
+- Weekday vs weekend
+- Seasonal trends
+
+---
+
+## Modeling Approach
+
+The task is formulated as a **binary classification problem**.
+
+**Models evaluated**:
+- Logistic Regression (baseline)
+- Random Forest
+- Gradient Boosting (LightGBM / XGBoost)
+
+Hyperparameter tuning is performed using cross-validation.
+
+---
+
+## Evaluation Metrics
+
+Model performance is evaluated using:
+- ROC-AUC
+- Precision
+- Recall
+- F1 Score
+
+Because delayed deliveries directly affect customer experience, the model prioritizes **recall**, ensuring the system detects as many potential delays as possible.
+
+---
+
+## Model Explainability
+
+SHAP values are used to interpret model predictions and identify the primary drivers of delivery delays.
+
+Common influential factors include:
+- Long shipping distances
+- Historically unreliable sellers
+- Specific product categories
+- Seasonal demand spikes
+
+---
+
+## System Output
+
+The system produces a delivery risk score for each order.
+
+**Example output**:
+> Predicted Delay Probability: 0.74
+> Risk Level: High
+
+A REST API built with **FastAPI** serves the trained model and returns predictions for incoming order data. An interactive **Streamlit dashboard** allows users to input order features and visualize delivery risk predictions in real time.
+
+---
+
+## Technologies Used
+
+- **Data Engineering**: MySQL, Python (Pandas, SQLAlchemy)
+- **Machine Learning**: Scikit-learn, LightGBM / XGBoost, SHAP
+- **MLOps & Experiment Tracking**: MLflow, DVC
+- **Backend & Deployment**: FastAPI, Docker
+- **Frontend Interface**: Streamlit
+
+---
+
+## Key Skills Demonstrated
+
+- Relational data engineering with SQL
+- Large-scale feature engineering across multiple tables
+- Classification modeling for logistics prediction
+- Experiment tracking and model versioning
+- API deployment and interactive ML applications

@@ -1,8 +1,12 @@
-loguru
-pip
-pytest
+pandas
+numpy
+scikit-learn
+lightgbm
+sqlalchemy
+pymysql
+mlflow
+fastapi
+uvicorn
+streamlit
+shap
 python-dotenv
-ruff
-tqdm
-typer
--e .
