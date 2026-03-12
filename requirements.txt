@@ -10,3 +10,5 @@ uvicorn
 streamlit
 shap
 python-dotenv
+catboost
+optuna

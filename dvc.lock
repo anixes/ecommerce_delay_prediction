@@ -1,0 +1,66 @@
+schema: '2.0'
+stages:
+  fetch_data:
+    cmd: python delivery_delay_prediction/dataset.py
+    deps:
+    - path: delivery_delay_prediction/config.py
+      hash: md5
+      md5: 5432d35b16cbd5fb4936ffd3d0e68785
+      size: 1149
+    - path: delivery_delay_prediction/dataset.py
+      hash: md5
+      md5: 7420b106705604dfdb69e5d16542194e
+      size: 1491
+    outs:
+    - path: data/interim/analytical_dataset.csv
+      hash: md5
+      md5: e732ecbf123d641395631e9e5d47f495
+      size: 22262959
+  engineer_features:
+    cmd: python delivery_delay_prediction/features.py
+    deps:
+    - path: data/interim/analytical_dataset.csv
+      hash: md5
+      md5: e732ecbf123d641395631e9e5d47f495
+      size: 22262959
+    - path: delivery_delay_prediction/config.py
+      hash: md5
+      md5: 5432d35b16cbd5fb4936ffd3d0e68785
+      size: 1149
+    - path: delivery_delay_prediction/features.py
+      hash: md5
+      md5: ad0d035bf6a7e530196c3e444ab3577f
+      size: 2750
+    outs:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: 0761d3be40a6d01917b794d0641ed4c8
+      size: 11997086
+  train_model:
+    cmd: python delivery_delay_prediction/train.py
+    deps:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: 0761d3be40a6d01917b794d0641ed4c8
+      size: 11997086
+    - path: delivery_delay_prediction/config.py
+      hash: md5
+      md5: 5432d35b16cbd5fb4936ffd3d0e68785
+      size: 1149
+    - path: delivery_delay_prediction/features.py
+      hash: md5
+      md5: ad0d035bf6a7e530196c3e444ab3577f
+      size: 2750
+    - path: delivery_delay_prediction/train.py
+      hash: md5
+      md5: 6043c720e066710e248a1492abbe5f0a
+      size: 6396
+    outs:
+    - path: models/catboost_baseline.cbm
+      hash: md5
+      md5: 88a94cb8bde06eabbc113744119655e3
+      size: 1436536
+    - path: models/feature_importance.csv
+      hash: md5
+      md5: 0cd02fa7995c46e75bcda0cf989744cb
+      size: 528
