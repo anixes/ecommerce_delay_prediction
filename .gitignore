@@ -1,5 +1,5 @@
 /data/*
-!/data/*.dvc
+!/data/**/*.dvc
 !/data/**/.gitignore
 
 # Mac OS-specific storage files
@@ -190,3 +190,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Machine Learning & MLOps
+catboost_info/
+mlruns/
+/models/*
+!/models/*.dvc
+!/models/.gitkeep

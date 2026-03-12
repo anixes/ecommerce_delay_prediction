@@ -1,0 +1,28 @@
+stages:
+  fetch_data:
+    cmd: python delivery_delay_prediction/dataset.py
+    deps:
+      - delivery_delay_prediction/dataset.py
+      - delivery_delay_prediction/config.py
+    outs:
+      - data/interim/analytical_dataset.csv
+  
+  engineer_features:
+    cmd: python delivery_delay_prediction/features.py
+    deps:
+      - data/interim/analytical_dataset.csv
+      - delivery_delay_prediction/features.py
+      - delivery_delay_prediction/config.py
+    outs:
+      - data/processed/features.csv
+  
+  train_model:
+    cmd: python delivery_delay_prediction/train.py
+    deps:
+      - data/processed/features.csv
+      - delivery_delay_prediction/train.py
+      - delivery_delay_prediction/features.py
+      - delivery_delay_prediction/config.py
+    outs:
+      - models/catboost_baseline.cbm
+      - models/feature_importance.csv
