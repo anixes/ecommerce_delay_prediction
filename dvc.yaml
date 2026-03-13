@@ -63,3 +63,12 @@ stages:
       - models/best_lightgbm_params.json
     outs:
       - models/model_comparison_report.csv
+
+  predict:
+    cmd: python delivery_delay_prediction/modeling/predict.py
+    deps:
+      - data/processed/features.csv
+      - delivery_delay_prediction/modeling/predict.py
+      - models/catboost_baseline.cbm
+    outs:
+      - data/processed/predictions.csv
