@@ -2,7 +2,7 @@ import typer
 from pathlib import Path
 from loguru import logger
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR
+from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, CAT_FEATURES, LIGHTGBM_BASELINE_MODEL
 
 app = typer.Typer()
 
@@ -28,7 +28,7 @@ def main(
     logger.info("Target and features separated.")
 
     # LightGBM requires categorical features to be 'category' type
-    cat_cols = ['customer_state', 'seller_state', 'product_category', 'primary_payment_type']
+    cat_cols = CAT_FEATURES
     logger.info(f"Converting {len(cat_cols)} columns to category...")
     for col in cat_cols:
         if col in X.columns:
@@ -93,7 +93,7 @@ def main(
     
     # Save model
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    model_path = MODELS_DIR / "lightgbm_baseline.txt"
+    model_path = LIGHTGBM_BASELINE_MODEL
     final_model.booster_.save_model(str(model_path))
     logger.success(f"LightGBM model saved to {model_path}")
 

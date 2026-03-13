@@ -9,8 +9,7 @@ from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import average_precision_score, f1_score
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT
-from delivery_delay_prediction.features import get_catboost_cat_features
+from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT, CAT_FEATURES, CATBOOST_TUNED_MODEL
 
 app = typer.Typer()
 
@@ -69,7 +68,7 @@ def main(
     target_col = 'is_late'
     X_full = df.drop(columns=['order_id', target_col])
     y_full = df[target_col].astype(int)
-    cat_features = get_catboost_cat_features(df)
+    cat_features = [c for c in CAT_FEATURES if c in df.columns]
 
     # Fast Sampling for Optuna
     if sample_fraction < 1.0:
@@ -118,7 +117,7 @@ def main(
         final_model.fit(X_final, y_full, cat_features=cat_features)
         
         # Save model
-        model_path = MODELS_DIR / "catboost_tuned.cbm"
+        model_path = CATBOOST_TUNED_MODEL
         final_model.save_model(str(model_path))
         logger.success(f"Tuned CatBoost model saved to {model_path}")
 

@@ -31,12 +31,19 @@ DB_NAME = os.getenv("DB_NAME", "olist")
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# If tqdm is installed, configure loguru with tqdm.write
-# https://github.com/Delgan/loguru/issues/135
-# try:
-#     from tqdm import tqdm
-# 
-#     logger.remove(0)
-#     logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
-# except ModuleNotFoundError:
-#     pass
+# Feature Schema
+CAT_FEATURES = [
+    'customer_state', 
+    'seller_state', 
+    'product_category', 
+    'primary_payment_type', 
+    'purchase_month', 
+    'purchase_day_of_week', 
+    'purchase_hour'
+]
+
+# Model Filenames
+CATBOOST_BASELINE_MODEL = MODELS_DIR / "catboost_baseline.cbm"
+CATBOOST_TUNED_MODEL = MODELS_DIR / "catboost_tuned.cbm"
+LIGHTGBM_BASELINE_MODEL = MODELS_DIR / "lightgbm_baseline.txt"
+LIGHTGBM_TUNED_MODEL = MODELS_DIR / "lightgbm_tuned.txt"

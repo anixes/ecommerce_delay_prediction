@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from loguru import logger
 import typer
-from delivery_delay_prediction.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR
+from delivery_delay_prediction.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR, CAT_FEATURES
 
 app = typer.Typer()
 
@@ -27,7 +27,7 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     df_clean = df.drop(columns=[c for c in cols_to_drop if c in df.columns]).copy()
     
     # Fill any straggling NA values in categoricals
-    cat_cols = ['customer_state', 'seller_state', 'product_category', 'primary_payment_type']
+    cat_cols = CAT_FEATURES
     for col in cat_cols:
         if col in df_clean.columns:
             df_clean[col] = df_clean[col].fillna("UNKNOWN").astype(str)
@@ -62,11 +62,7 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_catboost_cat_features(df: pd.DataFrame) -> list:
     """Returns a list of categorical column names expected by CatBoost."""
-    cat_cols = [
-        'customer_state', 'seller_state', 'product_category', 
-        'primary_payment_type', 'purchase_month', 'purchase_day_of_week', 'purchase_hour'
-    ]
-    return [col for col in cat_cols if col in df.columns]
+    return [col for col in CAT_FEATURES if col in df.columns]
 
 @app.command()
 def main(

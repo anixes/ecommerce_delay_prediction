@@ -1,7 +1,7 @@
 import typer
 from pathlib import Path
 from loguru import logger
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT
+from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT, CAT_FEATURES, LIGHTGBM_TUNED_MODEL
 
 app = typer.Typer()
 
@@ -69,10 +69,7 @@ def main(
     X_full = df.drop(columns=['order_id', target_col])
     y_full = df[target_col].astype(int)
 
-    cat_cols = [
-        'customer_state', 'seller_state', 'product_category', 
-        'primary_payment_type', 'purchase_month', 'purchase_day_of_week', 'purchase_hour'
-    ]
+    cat_cols = CAT_FEATURES
     for col in cat_cols:
         if col in X_full.columns:
             X_full[col] = X_full[col].astype('category')
@@ -109,7 +106,7 @@ def main(
     final_model.fit(X_full, y_full)
     
     # Save model artifact
-    model_path = MODELS_DIR / "lightgbm_tuned.txt"
+    model_path = LIGHTGBM_TUNED_MODEL
     final_model.booster_.save_model(str(model_path))
     logger.success(f"Tuned LightGBM model saved to {model_path}")
 

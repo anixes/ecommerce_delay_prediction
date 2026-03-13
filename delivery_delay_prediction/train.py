@@ -9,7 +9,7 @@ from catboost import CatBoostClassifier, Pool
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, average_precision_score
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR
+from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, CAT_FEATURES, CATBOOST_BASELINE_MODEL
 from delivery_delay_prediction.features import get_catboost_cat_features
 
 app = typer.Typer()
@@ -155,7 +155,7 @@ def main(
         
         # Assuming MODELS_DIR is set up
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        model_path = MODELS_DIR / "catboost_baseline.cbm"
+        model_path = CATBOOST_BASELINE_MODEL
         final_model.save_model(str(model_path))
         logger.success(f"Final model deployed to: {model_path}")
 

@@ -3,14 +3,19 @@ from pathlib import Path
 from loguru import logger
 import typer
 from catboost import CatBoostClassifier
-from delivery_delay_prediction.config import MODELS_DIR, PROCESSED_DATA_DIR
+from delivery_delay_prediction.config import (
+    MODELS_DIR, 
+    PROCESSED_DATA_DIR, 
+    CAT_FEATURES, 
+    CATBOOST_TUNED_MODEL, 
+    CATBOOST_BASELINE_MODEL
+)
 
 app = typer.Typer()
 
 @app.command()
 def main(
     features_path: Path = PROCESSED_DATA_DIR / "features.csv",
-    model_path: Path = MODELS_DIR / "catboost_baseline.cbm",
     predictions_path: Path = PROCESSED_DATA_DIR / "predictions.csv",
 ):
     """
@@ -29,9 +34,12 @@ def main(
     # Features (must match training features)
     X = df.drop(columns=['order_id', target_col], errors='ignore')
     
+    # Select model (Prefer tuned over baseline)
+    model_path = CATBOOST_TUNED_MODEL if CATBOOST_TUNED_MODEL.exists() else CATBOOST_BASELINE_MODEL
+    
     logger.info(f"Loading CatBoost model from {model_path}...")
     if not model_path.exists():
-        logger.error(f"Model not found at {model_path}. Run training first.")
+        logger.error(f"No model found at {model_path}. Please run training or cloud tuning first.")
         raise typer.Exit(code=1)
         
     model = CatBoostClassifier()
@@ -40,10 +48,8 @@ def main(
     # Handle categorical features (CatBoost needs them as strings or correctly typed)
     # The saved .cbm model remembers which indices were categorical, 
     # but we must ensure data types match.
-    cat_cols = [
-        'customer_state', 'seller_state', 'product_category', 
-        'primary_payment_type', 'purchase_month', 'purchase_day_of_week', 'purchase_hour'
-    ]
+    # Handle categorical features
+    cat_cols = CAT_FEATURES
     for col in cat_cols:
         if col in X.columns:
             X[col] = X[col].fillna("UNKNOWN").astype(str)
