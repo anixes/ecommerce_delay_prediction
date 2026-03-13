@@ -49,8 +49,8 @@ stages:
       size: 17443611
     - path: delivery_delay_prediction/config.py
       hash: md5
-      md5: 5432d35b16cbd5fb4936ffd3d0e68785
-      size: 1149
+      md5: d4f4a3aae396c51f4e814dd84120e7bb
+      size: 1163
     - path: delivery_delay_prediction/features.py
       hash: md5
       md5: bb028609a7c8e032d9c4b80227ae4740
@@ -68,3 +68,23 @@ stages:
       hash: md5
       md5: bb2ff8ce0365ed2dbd506ed9db2fce36
       size: 745
+  predict:
+    cmd: python delivery_delay_prediction/modeling/predict.py
+    deps:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: c536956165212b12f2bbc80fa8d4de98
+      size: 17443611
+    - path: delivery_delay_prediction/modeling/predict.py
+      hash: md5
+      md5: ef4ddcfd5c1f97ca4c19ed23e743479d
+      size: 2292
+    - path: models/catboost_baseline.cbm
+      hash: md5
+      md5: 050cc0626958bf37702c96ab989c1bc5
+      size: 2020964
+    outs:
+    - path: data/processed/predictions.csv
+      hash: md5
+      md5: 809329ef679f005530763c790a4b54ff
+      size: 5372419
