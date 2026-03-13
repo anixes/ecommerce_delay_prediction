@@ -32,30 +32,40 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         if col in df_clean.columns:
             df_clean[col] = df_clean[col].fillna("UNKNOWN").astype(str)
             
-    # Continuous Transformations
-    if 'distance_km' in df_clean.columns:
-        df_clean['distance_km'] = np.log1p(df_clean['distance_km'])
-        
-    # Cap outlier monetary columns at 99th percentile
-    for col in ['total_price', 'total_freight']:
+    # Continuous Transformations (Log transform skewed distance/logistics)
+    log_cols = ['distance_km', 'total_weight_g', 'avg_product_volume_cm3']
+    for col in log_cols:
         if col in df_clean.columns:
-            p99 = df_clean[col].quantile(0.99)
+            df_clean[col] = np.log1p(df_clean[col].fillna(0))
+        
+    # Cap outlier columns at 99.5th percentile
+    cap_cols = ['total_price', 'total_freight', 'freight_ratio', 'total_payment']
+    for col in cap_cols:
+        if col in df_clean.columns:
+            # Replace Inf/NaN with 0 before capping
+            df_clean[col] = df_clean[col].replace([np.inf, -np.inf], np.nan).fillna(0)
+            p99 = df_clean[col].quantile(0.995)
             df_clean[col] = np.where(df_clean[col] > p99, p99, df_clean[col])
             
     # Ensure our target is int
     if 'is_late' in df_clean.columns:
         df_clean['is_late'] = df_clean['is_late'].astype(int)
         
-    # Ensure seller_historical_delay_rate is float
-    if 'seller_historical_delay_rate' in df_clean.columns:
-        df_clean['seller_historical_delay_rate'] = df_clean['seller_historical_delay_rate'].astype(float)
+    # History Features
+    history_cols = ['seller_historical_delay_rate', 'seller_avg_review_score']
+    for col in history_cols:
+        if col in df_clean.columns:
+            df_clean[col] = df_clean[col].fillna(0).astype(float)
     
     logger.info(f"Finished preparation. Output shape: {df_clean.shape}")
     return df_clean
 
 def get_catboost_cat_features(df: pd.DataFrame) -> list:
     """Returns a list of categorical column names expected by CatBoost."""
-    cat_cols = ['customer_state', 'seller_state', 'product_category', 'primary_payment_type']
+    cat_cols = [
+        'customer_state', 'seller_state', 'product_category', 
+        'primary_payment_type', 'purchase_month', 'purchase_day_of_week', 'purchase_hour'
+    ]
     return [col for col in cat_cols if col in df.columns]
 
 @app.command()

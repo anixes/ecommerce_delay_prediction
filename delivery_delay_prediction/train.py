@@ -71,7 +71,7 @@ def main(
         logger.info(f"Starting {n_splits}-fold Stratified CV...")
         
         for fold, (train_idx, val_idx) in enumerate(skf.split(X, y)):
-            X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+            X_train, X_val = X.iloc[train_idx].copy(), X.iloc[val_idx].copy()
             y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
             
             # Fill NaN for categorical inputs explicitly to string "UNKNOWN" on CV slices just to be safe
@@ -134,9 +134,10 @@ def main(
         
         # Train final model on FULL dataset for artifact saving
         logger.info("Training final model on full feature set...")
+        X_full = X.copy()
         for c in cat_features:
-            X[c] = X[c].fillna("UNKNOWN").astype(str)
-        full_pool = Pool(data=X, label=y, cat_features=cat_features)
+            X_full[c] = X_full[c].fillna("UNKNOWN").astype(str)
+        full_pool = Pool(data=X_full, label=y, cat_features=cat_features)
         
         final_model = CatBoostClassifier(
             iterations=epochs,
