@@ -13,6 +13,26 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info("Starting feature preparation pipeline...")
     
+    # Create a copy for cleaning
+    df_clean = df.copy()
+    
+    # Temporal peak behavior (Black Friday, holidays)
+    if 'order_purchase_timestamp' in df_clean.columns:
+        ts = pd.to_datetime(df_clean['order_purchase_timestamp'])
+        
+        # Black Friday dates for the dataset timeframe
+        # 2016-11-25, 2017-11-24
+        df_clean['is_black_friday'] = ts.dt.date.astype(str).isin(['2016-11-25', '2017-11-24']).astype(int)
+        
+        # Major Holidays (simplified for Brazil)
+        # Adding a few key ones: New Years, Christmas, etc.
+        holidays_2016_2018 = [
+            '2016-12-25', '2017-01-01', '2017-04-14', '2017-04-21', '2017-05-01', 
+            '2017-09-07', '2017-10-12', '2017-11-02', '2017-11-15', '2017-12-25',
+            '2018-01-01', '2018-03-30', '2018-04-21', '2018-05-01', '2018-09-07'
+        ]
+        df_clean['is_holiday'] = ts.dt.date.astype(str).isin(holidays_2016_2018).astype(int)
+        
     # Drop unnecessary IDs or timestamps we don't need for the model
     # Keep order_id for joining predictions back later
     cols_to_drop = [
@@ -24,7 +44,7 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         'order_estimated_delivery_date'
     ]
     
-    df_clean = df.drop(columns=[c for c in cols_to_drop if c in df.columns]).copy()
+    df_clean = df_clean.drop(columns=[c for c in cols_to_drop if c in df_clean.columns])
     
     # Fill any straggling NA values in categoricals
     cat_cols = CAT_FEATURES
@@ -33,7 +53,10 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
             df_clean[col] = df_clean[col].fillna("UNKNOWN").astype(str)
             
     # Continuous Transformations (Log transform skewed distance/logistics)
-    log_cols = ['distance_km', 'total_weight_g', 'avg_product_volume_cm3']
+    log_cols = [
+        'distance_km', 'total_weight_g', 'avg_product_volume_cm3',
+        'seller_state_backlog', 'customer_state_backlog', 'customer_total_orders'
+    ]
     for col in log_cols:
         if col in df_clean.columns:
             df_clean[col] = np.log1p(df_clean[col].fillna(0))

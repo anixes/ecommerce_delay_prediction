@@ -122,7 +122,11 @@ SELECT
     -- Business Logic Metrics & History
     DATEDIFF(o.order_estimated_delivery_date, o.order_purchase_timestamp) AS lead_time_days_estimated,
     COALESCE(sh.seller_historical_delay_rate, 0) AS seller_historical_delay_rate,
-    COALESCE(srh.seller_avg_review_score, 0) AS seller_avg_review_score
+    COALESCE(srh.seller_avg_review_score, 0) AS seller_avg_review_score,
+    COALESCE(sb.seller_state_backlog, 0) AS seller_state_backlog,
+    COALESCE(cb.customer_state_backlog, 0) AS customer_state_backlog,
+    COALESCE(ch.customer_total_orders, 1) AS customer_total_orders,
+    COALESCE(srp.seller_recent_delay_rate, 0) AS seller_recent_delay_rate
     
 FROM base_orders o
 JOIN customers c ON o.customer_id = c.customer_id
@@ -132,4 +136,55 @@ LEFT JOIN payment_summary ps ON o.order_id = ps.order_id
 LEFT JOIN seller_history sh ON o.order_id = sh.order_id
 LEFT JOIN seller_review_history srh ON o.order_id = srh.order_id
 LEFT JOIN zip_coordinates gc ON c.customer_zip_code_prefix = gc.zip_code
-LEFT JOIN zip_coordinates gs ON s.seller_zip_code_prefix = gs.zip_code;
+LEFT JOIN zip_coordinates gs ON s.seller_zip_code_prefix = gs.zip_code
+LEFT JOIN (
+    -- Customer Purchase History: Count total orders for this unique customer identity
+    -- Note: customers table has customer_unique_id for this, but base_orders uses customer_id (order-specific)
+    -- Joining back to customers to get unique_id
+    SELECT 
+        bo.order_id,
+        COUNT(bo.order_id) OVER(
+            PARTITION BY cu.customer_unique_id 
+            ORDER BY bo.order_purchase_timestamp 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) + 1 AS customer_total_orders
+    FROM base_orders bo
+    JOIN customers cu ON bo.customer_id = cu.customer_id
+) ch ON o.order_id = ch.order_id
+LEFT JOIN (
+    -- Recent Seller Performance: Average delay in the last 5 orders
+    SELECT
+        bo.order_id,
+        AVG(bo.is_late) OVER(
+            PARTITION BY ois.seller_id 
+            ORDER BY bo.order_purchase_timestamp 
+            ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING
+        ) AS seller_recent_delay_rate
+    FROM base_orders bo
+    JOIN order_item_summary ois ON bo.order_id = ois.order_id
+) srp ON o.order_id = srp.order_id
+LEFT JOIN (
+    -- Backlog: Order volume in the seller state in the last 7 days
+    SELECT 
+        bo.order_id,
+        COUNT(bo.order_id) OVER(
+            PARTITION BY s.seller_state 
+            ORDER BY bo.order_purchase_timestamp 
+            RANGE BETWEEN INTERVAL 7 DAY PRECEDING AND INTERVAL 1 SECOND PRECEDING
+        ) AS seller_state_backlog
+    FROM base_orders bo
+    JOIN order_item_summary ois ON bo.order_id = ois.order_id
+    JOIN sellers s ON ois.seller_id = s.seller_id
+) sb ON o.order_id = sb.order_id
+LEFT JOIN (
+    -- Backlog: Order volume in the customer state in the last 3 days
+    SELECT 
+        bo.order_id,
+        COUNT(bo.order_id) OVER(
+            PARTITION BY c.customer_state 
+            ORDER BY bo.order_purchase_timestamp 
+            RANGE BETWEEN INTERVAL 3 DAY PRECEDING AND INTERVAL 1 SECOND PRECEDING
+        ) AS customer_state_backlog
+    FROM base_orders bo
+    JOIN customers c ON bo.customer_id = c.customer_id
+) cb ON o.order_id = cb.order_id;
