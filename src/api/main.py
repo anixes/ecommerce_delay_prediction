@@ -117,13 +117,23 @@ def predict(order: OrderInput):
         prob = model.predict_proba(X)[0, 1]
         
         # Calculate SHAP values for this specific prediction
-        shap_values = model.get_feature_importance(data=X, type='ShapValues')[0]
+        # CatBoost requires a Pool with cat_features defined for models with categoricals
+        from catboost import Pool
+        pool = Pool(X, cat_features=CAT_FEATURES)
+        shap_values = model.get_feature_importance(data=pool, type='ShapValues')[0]
+        
         # shap_values has len(MODEL_COLUMNS) + 1 (the last one is the base value)
         feature_shap = dict(zip(MODEL_COLUMNS, shap_values[:-1]))
         
-        # Get Top 3 most positive contributors to the delay risk
-        top_contributors = sorted(feature_shap.items(), key=lambda x: x[1], reverse=True)[:3]
-        contributors = [{"feature": f, "impact": round(v, 4)} for f, v in top_contributors if v > 0]
+        # Get Top 3 most impactful contributors (absolute value)
+        top_contributors = sorted(feature_shap.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
+        contributors = [
+            {
+                "feature": f, 
+                "impact": round(v, 4),
+                "direction": "increasing" if v >= 0 else "decreasing"
+            } for f, v in top_contributors
+        ]
         
         return {
             "delay_probability": round(float(prob), 4),

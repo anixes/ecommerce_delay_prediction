@@ -3,6 +3,22 @@ from fastapi.testclient import TestClient
 from src.api.main import app
 import datetime
 
+import src.api.main as api_main
+import unittest.mock as mock
+
+# Sample feature set if MODEL_COLUMNS is empty (happens in CI)
+MOCK_COLUMNS = [
+    'distance_km', 'lead_time_days_estimated', 'total_weight_g', 
+    'total_price', 'total_freight', 'seller_avg_review_score',
+    'seller_historical_delay_rate', 'seller_state_backlog',
+    'required_velocity', 'is_black_friday', 'is_holiday',
+    'purchase_month', 'purchase_day_of_week', 'purchase_hour'
+]
+
+# Force initialization if in CI/Test environment
+if not api_main.MODEL_COLUMNS:
+    api_main.MODEL_COLUMNS = MOCK_COLUMNS
+
 client = TestClient(app)
 
 def test_read_root():
@@ -34,6 +50,12 @@ def test_predict_endpoint():
         "route_delay_rate": 0.02
     }
     
+    # Mock model if missing
+    if api_main.model is None:
+        api_main.model = mock.MagicMock()
+        api_main.model.predict_proba.return_value = [[0.8, 0.2]]
+        api_main.model.get_feature_importance.return_value = [[0.1] * (len(api_main.MODEL_COLUMNS) + 1)]
+
     response = client.post("/predict", json=sample_data)
     
     # If model is loaded, we expect 200. 

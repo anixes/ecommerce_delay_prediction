@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import datetime
 import time
+import os
 from delivery_delay_prediction.config import CAT_FEATURES
 
 # Page configuration
@@ -76,6 +77,28 @@ ADV_DEFAULTS = {
     'product_category': "UNKNOWN"
 }
 
+# Human-readable labels for SHAP factors
+FEATURE_LABELS = {
+    "buffer_to_lead_ratio": "Delivery Time Buffer",
+    "total_payment": "Order Commercial Value",
+    "route_delay_rate": "Historical Route Reliability",
+    "required_velocity": "Required Transit Speed",
+    "distance_km": "Shipping Distance",
+    "seller_state_backlog": "Regional Hub Congestion",
+    "seller_avg_review_score": "Seller Performance Rating",
+    "seller_historical_delay_rate": "Seller Reliability Index",
+    "days_to_nearest_holiday": "Holiday Proximity",
+    "purchase_month": "Seasonal Peak Factor",
+    "purchase_day_of_week": "Weekly Transit Load",
+    "purchase_hour": "Order Processing Window",
+    "product_category": "Product Category Risk",
+    "total_weight_g": "Package Physical Profile",
+    "is_holiday": "Holiday Status",
+    "is_black_friday": "Black Friday Peak",
+    "is_hub_delivery": "Hub-specific Logistics",
+    "required_velocity": "Transit Urgency"
+}
+
 # State Management Initialization
 if 'initialized' not in st.session_state:
     st.session_state['initialized'] = True
@@ -109,7 +132,7 @@ def set_preset(name):
         st.session_state['seller_historical_delay_rate'] = 0.15
 
 # API Configuration
-API_URL = st.sidebar.text_input("API URL", os.getenv("API_URL", "http://localhost:8000"))
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # Helper for API check
 def check_api():
@@ -226,7 +249,11 @@ if st.button(button_label, type="primary", use_container_width=True):
                 if factors:
                     st.markdown("### Risk Breakdown")
                     for f in factors:
-                        st.info(f"The factor **{f['feature']}** is pushing the risk higher.")
+                        label = FEATURE_LABELS.get(f['feature'], f['feature'].replace('_', ' ').title())
+                        icon = "↑" if f['direction'] == "increasing" else "↓"
+                        
+                        desc = "increasing the risk" if f['direction'] == "increasing" else "improving the outlook"
+                        st.markdown(f"**{icon} {label}**: This factor is currently **{desc}**.")
                 
                 if prob > 0.5:
                     st.error(f"High Risk Alert: Predicted delay probability is {prob*100:.1f}%. Immediate intervention required.")
