@@ -57,6 +57,12 @@ class OrderInput(BaseModel):
     # Temporal
     order_purchase_timestamp: str = Field(..., example="2018-05-15 10:00:00")
     
+    # Enriched Seller & Product Signals
+    seller_avg_review_score: float = Field(default=4.0, example=4.5)
+    seller_historical_delay_rate: float = Field(default=0.05, example=0.02)
+    total_items: int = Field(default=1, example=1)
+    avg_product_volume_cm3: float = Field(default=1000.0, example=5000.0)
+    
     # Optional/Situational (Defaults provided for missing data)
     seller_state_backlog: float = Field(default=1.0)
     seller_intensity_score: float = Field(default=1.0)
