@@ -26,7 +26,6 @@ stages:
       - delivery_delay_prediction/config.py
     outs:
       - models/catboost_baseline.cbm
-      - models/feature_importance.csv
   
   tune_catboost:
     cmd: python delivery_delay_prediction/modeling/tune_catboost.py --n-trials 50
@@ -34,7 +33,6 @@ stages:
       - data/processed/features.csv
       - delivery_delay_prediction/modeling/tune_catboost.py
     outs:
-      - models/best_catboost_params.json
       - models/catboost_tuned.cbm
 
   train_lightgbm:
@@ -51,18 +49,8 @@ stages:
       - data/processed/features.csv
       - delivery_delay_prediction/modeling/tune_lightgbm.py
     outs:
-      - models/best_lightgbm_params.json
       - models/lightgbm_tuned.txt
 
-  compare_models:
-    cmd: python delivery_delay_prediction/modeling/compare_models.py
-    deps:
-      - data/processed/features.csv
-      - delivery_delay_prediction/modeling/compare_models.py
-      - models/best_catboost_params.json
-      - models/best_lightgbm_params.json
-    outs:
-      - models/model_comparison_report.csv
 
   predict:
     cmd: python delivery_delay_prediction/modeling/predict.py
