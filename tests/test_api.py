@@ -19,6 +19,14 @@ MOCK_COLUMNS = [
 if not api_main.MODEL_COLUMNS:
     api_main.MODEL_COLUMNS = MOCK_COLUMNS
 
+# Always ensure a mocked model exists for the test client
+if api_main.model is None:
+    api_main.model = mock.MagicMock()
+    # Mock predict_proba to return 2 classes [prob_0, prob_1]
+    api_main.model.predict_proba.return_value = [[0.8, 0.2]]
+    # Mock SHAP values (one for each feature + 1 base value)
+    api_main.model.get_feature_importance.return_value = [[0.1] * (len(api_main.MODEL_COLUMNS) + 1)]
+
 client = TestClient(app)
 
 def test_read_root():
@@ -26,7 +34,8 @@ def test_read_root():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "online"
-    assert "model_loaded" in data
+    # Even in CI, our mock ensures model_loaded is True
+    assert data["model_loaded"] is True
 
 def test_predict_endpoint():
     # Sample data that matches the OrderInput schema
@@ -50,28 +59,15 @@ def test_predict_endpoint():
         "route_delay_rate": 0.02
     }
     
-    # Mock model if missing
-    if api_main.model is None:
-        api_main.model = mock.MagicMock()
-        api_main.model.predict_proba.return_value = [[0.8, 0.2]]
-        api_main.model.get_feature_importance.return_value = [[0.1] * (len(api_main.MODEL_COLUMNS) + 1)]
-
     response = client.post("/predict", json=sample_data)
     
-    # If model is loaded, we expect 200. 
-    # In CI, if we don't have the model file, we might get 503 or fail.
-    # For now, let's assume we want to test the routing and schema validation.
-    if response.status_code == 200:
-        data = response.json()
-        assert "delay_probability" in data
-        assert "risk_level" in data
-        assert 0 <= data["delay_probability"] <= 1
-    elif response.status_code == 503:
-        # Expected if model file is missing in CI environment
-        assert "Model not loaded" in response.json()["detail"]
-    else:
-        # Should not get other errors if schema is correct
-        assert response.status_code == 200, f"API failed with {response.text}"
+    # We expect 200 because we mocked the model
+    assert response.status_code == 200, f"API failed with {response.text}"
+    data = response.json()
+    assert "delay_probability" in data
+    assert "risk_level" in data
+    assert "top_risk_factors" in data
+    assert 0 <= data["delay_probability"] <= 1
 
 def test_invalid_input():
     # Missing required field
