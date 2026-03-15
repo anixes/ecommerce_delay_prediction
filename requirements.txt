@@ -12,3 +12,5 @@ shap
 python-dotenv
 catboost
 optuna
+loguru
+typer
