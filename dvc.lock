@@ -13,48 +13,48 @@ stages:
       size: 2079
     - path: sql/feature_queries.sql
       hash: md5
-      md5: acbb823c1affca373cd8c82a71699cbd
-      size: 7907
+      md5: 4c39537d988989c2c14bbf1030085a40
+      size: 9381
     outs:
     - path: data/interim/analytical_dataset.csv
       hash: md5
-      md5: 8db96c0f60ad01f678e0e4a2b98aa4f4
-      size: 25201438
+      md5: 9f9bec989c3547b5d070a9fe36ad66ee
+      size: 27244923
   engineer_features:
     cmd: python delivery_delay_prediction/features.py
     deps:
     - path: data/interim/analytical_dataset.csv
       hash: md5
-      md5: 8db96c0f60ad01f678e0e4a2b98aa4f4
-      size: 25201438
+      md5: 9f9bec989c3547b5d070a9fe36ad66ee
+      size: 27244923
     - path: delivery_delay_prediction/config.py
       hash: md5
       md5: 1c403cc591f9d2290b44653103d747eb
       size: 1354
     - path: delivery_delay_prediction/features.py
       hash: md5
-      md5: a4d829c9977ead0578b2efb1cb401c22
-      size: 4633
+      md5: 0fa8fbea23fdf1d3cce2e5e2d7ed4b7d
+      size: 7536
     outs:
     - path: data/processed/features.csv
       hash: md5
-      md5: 80f4aacd218659c3a19c2f4b8df7fda3
-      size: 32651124
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
   train_model:
     cmd: python delivery_delay_prediction/train.py
     deps:
     - path: data/processed/features.csv
       hash: md5
-      md5: c536956165212b12f2bbc80fa8d4de98
-      size: 17443611
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
     - path: delivery_delay_prediction/config.py
       hash: md5
       md5: 1c403cc591f9d2290b44653103d747eb
       size: 1354
     - path: delivery_delay_prediction/features.py
       hash: md5
-      md5: 639dd379e5436478178493856712a61b
-      size: 2946
+      md5: 0fa8fbea23fdf1d3cce2e5e2d7ed4b7d
+      size: 7536
     - path: delivery_delay_prediction/train.py
       hash: md5
       md5: 0189ba80756ce7f2cd2f337ed5965b73
@@ -62,29 +62,73 @@ stages:
     outs:
     - path: models/catboost_baseline.cbm
       hash: md5
-      md5: 82d084983fea40c9bba8281c61737fb9
-      size: 2020964
-    - path: models/feature_importance.csv
-      hash: md5
-      md5: bb2ff8ce0365ed2dbd506ed9db2fce36
-      size: 745
+      md5: d142c938b90e7ace072db20a8dc34ff9
+      size: 1381436
   predict:
     cmd: python delivery_delay_prediction/modeling/predict.py
     deps:
     - path: data/processed/features.csv
       hash: md5
-      md5: c536956165212b12f2bbc80fa8d4de98
-      size: 17443611
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
     - path: delivery_delay_prediction/modeling/predict.py
       hash: md5
       md5: 52df0e86e12659719b90375f50bc5f65
       size: 2381
     - path: models/catboost_baseline.cbm
       hash: md5
-      md5: 82d084983fea40c9bba8281c61737fb9
-      size: 2020964
+      md5: d142c938b90e7ace072db20a8dc34ff9
+      size: 1381436
     outs:
     - path: data/processed/predictions.csv
       hash: md5
       md5: 02bba4e9b31cfb36fe2430aefdac16c8
       size: 5371173
+  tune_catboost:
+    cmd: python delivery_delay_prediction/modeling/tune_catboost.py --n-trials 50
+    deps:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
+    - path: delivery_delay_prediction/modeling/tune_catboost.py
+      hash: md5
+      md5: f15eff8621adb7feed00aa401a267297
+      size: 5094
+    outs:
+    - path: models/catboost_tuned.cbm
+      hash: md5
+      md5: 1d22f8f92590fc8abaa73d318b1d65d4
+      size: 2353552
+  train_lightgbm:
+    cmd: python delivery_delay_prediction/modeling/train_lightgbm.py
+    deps:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
+    - path: delivery_delay_prediction/modeling/train_lightgbm.py
+      hash: md5
+      md5: 106addcfca96c1ca1c86bd2c4b5dfb46
+      size: 3553
+    outs:
+    - path: models/lightgbm_baseline.txt
+      hash: md5
+      md5: 2fbdeec873a09bc157633dd232512454
+      size: 1753339
+  tune_lightgbm:
+    cmd: python delivery_delay_prediction/modeling/tune_lightgbm.py --n-trials 50
+    deps:
+    - path: data/processed/features.csv
+      hash: md5
+      md5: fe53df5f89a7fd960533665600b50cb8
+      size: 42295316
+    - path: delivery_delay_prediction/modeling/tune_lightgbm.py
+      hash: md5
+      md5: a3f0cd1002ca4db76537e0b421760456
+      size: 4350
+    outs:
+    - path: models/lightgbm_tuned.txt
+      hash: md5
+      md5: 796651934f1a361c64f3890626186b60
+      size: 2635292
