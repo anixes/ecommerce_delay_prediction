@@ -1,21 +1,9 @@
 import pytest
-from fastapi.testclient import TestClient
 import unittest.mock as mock
-import sys
-import os
+import src.api.main as api_main
+from fastapi.testclient import TestClient
 
-# Ensure project root is in path for imports
-sys.path.append(os.getcwd())
-
-# Mock the model before importing the app to avoid loading heavy binaries
-mock_catboost = mock.MagicMock()
-with mock.patch('catboost.CatBoostClassifier', return_value=mock_catboost):
-    # Mocking config and model loading during import
-    with mock.patch('delivery_delay_prediction.config.CATBOOST_TUNED_MODEL', return_value='/tmp/mock.cbm'):
-        from src.api.main import app
-        import src.api.main as api_main
-
-# Setup mock data for the module
+# 1. SETUP GLOBAL MOCKS PERMANENTLY
 MOCK_COLUMNS = [
     'distance_km', 'lead_time_days_estimated', 'total_weight_g', 
     'total_price', 'total_freight', 'seller_avg_review_score',
@@ -24,22 +12,23 @@ MOCK_COLUMNS = [
     'purchase_month', 'purchase_day_of_week', 'purchase_hour'
 ]
 
-# Force initialization
-api_main.MODEL_COLUMNS = MOCK_COLUMNS
-api_main.model = mock_catboost
-# Mock results
-mock_catboost.predict_proba.return_value = [[0.8, 0.2]]
-mock_catboost.get_feature_importance.return_value = [[0.1] * (len(MOCK_COLUMNS) + 1)]
+mock_model = mock.MagicMock()
+mock_model.predict_proba.return_value = [[0.8, 0.2]]
+mock_model.get_feature_importance.return_value = [[0.1] * (len(MOCK_COLUMNS) + 1)]
 
+# Injected BEFORE TestClient starts
+api_main.model = mock_model
+api_main.MODEL_COLUMNS = MOCK_COLUMNS
+
+from src.api.main import app
 client = TestClient(app)
 
 def test_read_root():
-    # Force online status for test
-    with mock.patch('src.api.main.model', mock_catboost):
-        response = client.get("/")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "online"
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "online"
+    assert data["model_loaded"] is True
 
 def test_predict_endpoint():
     sample_data = {
@@ -62,14 +51,13 @@ def test_predict_endpoint():
         "route_delay_rate": 0.02
     }
     
-    with mock.patch('src.api.main.model', mock_catboost):
-        with mock.patch('src.api.main.MODEL_COLUMNS', MOCK_COLUMNS):
-            response = client.post("/predict", json=sample_data)
-            assert response.status_code == 200
-            data = response.json()
-            assert "delay_probability" in data
-            assert data["delay_probability"] == 0.2
-            assert "top_risk_factors" in data
+    response = client.post("/predict", json=sample_data)
+    
+    assert response.status_code == 200, f"API failed with {response.text}"
+    data = response.json()
+    assert "delay_probability" in data
+    assert data["delay_probability"] == 0.2
+    assert "top_risk_factors" in data
 
 def test_invalid_input():
     invalid_data = {"distance_km": 150.0}
