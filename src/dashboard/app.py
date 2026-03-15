@@ -207,6 +207,7 @@ if st.button(button_label, type="primary", use_container_width=True):
         
         with st.spinner("Analyzing logistics signals..."):
             try:
+                # API Call
                 res = requests.post(f"{API_URL}/predict", json=payload).json()
                 prob = res["delay_probability"]
                 level = res["risk_level"]
@@ -223,15 +224,16 @@ if st.button(button_label, type="primary", use_container_width=True):
                 
                 # Risk Breakdown (SHAP)
                 if factors:
-                    st.markdown("#### Risk Breakdown")
+                    st.markdown("### Risk Breakdown")
                     for f in factors:
-                        st.info(f"The feature **{f['feature']}** is increasing the delay risk.")
+                        st.info(f"The factor **{f['feature']}** is pushing the risk higher.")
                 
                 if prob > 0.5:
-                    st.error(f"High Risk Alert: Predicted delay probability is {prob*100:.1f}%.")
+                    st.error(f"High Risk Alert: Predicted delay probability is {prob*100:.1f}%. Immediate intervention required.")
                 elif prob > 0.3:
-                    st.warning(f"Warning: Moderate risk detected ({prob*100:.1f}%).")
+                    st.warning(f"Warning: Moderate risk detected ({prob*100:.1f}%). Monitor closely.")
                 else:
-                    st.success(f"Success: Low risk delivery ({prob*100:.1f}%).")
+                    st.success(f"Success: Low risk delivery ({prob*100:.1f}%). On-time arrival expected.")
+                    
             except Exception as e:
                 st.error(f"Execution Error: {e}")
