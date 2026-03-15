@@ -5,6 +5,9 @@
 /models/*
 !/models/*.dvc
 !/models/.gitkeep
+# Allow metadata and reports to be tracked by Git
+!/models/*.json
+!/models/*.csv
 
 # Reports and Figures
 /reports/figures/*
