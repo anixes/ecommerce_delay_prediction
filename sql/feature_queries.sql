@@ -26,7 +26,13 @@ order_item_summary AS (
         MAX(oi.seller_id) AS seller_id,
         MAX(p.product_category_name) AS product_category,
         SUM(p.product_weight_g) AS total_weight_g,
-        AVG(p.product_length_cm * p.product_height_cm * p.product_width_cm) AS avg_product_volume_cm3
+        AVG(p.product_length_cm * p.product_height_cm * p.product_width_cm) AS avg_product_volume_cm3,
+        -- NEW: Product listing quality
+        AVG(COALESCE(p.product_photos_qty, 0)) AS avg_product_photos,
+        AVG(COALESCE(p.product_description_lenght, 0)) AS avg_description_length,
+        -- NEW: Shipping limit gap (seller's committed buffer in days)
+        DATEDIFF(MAX(oi.shipping_limit_date), MIN(oi.shipping_limit_date)) AS shipping_limit_spread,
+        MAX(oi.shipping_limit_date) AS max_shipping_limit_date
     FROM order_items oi
     JOIN products p ON oi.product_id = p.product_id
     GROUP BY oi.order_id
@@ -119,6 +125,14 @@ SELECT
     ps.max_installments,
     ps.primary_payment_type,
     
+    -- NEW: Product listing quality
+    ois.avg_product_photos,
+    ois.avg_description_length,
+    
+    -- NEW: Seller shipping buffer (days between purchase and shipping limit)
+    DATEDIFF(ois.max_shipping_limit_date, o.order_purchase_timestamp) AS seller_shipping_buffer_days,
+    ois.shipping_limit_spread,
+    
     -- Business Logic Metrics & History
     DATEDIFF(o.order_estimated_delivery_date, o.order_purchase_timestamp) AS lead_time_days_estimated,
     COALESCE(sh.seller_historical_delay_rate, 0) AS seller_historical_delay_rate,
@@ -126,8 +140,17 @@ SELECT
     COALESCE(sb.seller_state_backlog, 0) AS seller_state_backlog,
     COALESCE(cb.customer_state_backlog, 0) AS customer_state_backlog,
     COALESCE(ch.customer_total_orders, 1) AS customer_total_orders,
-    COALESCE(srp.seller_recent_delay_rate, 0) AS seller_recent_delay_rate
+    COALESCE(srp.seller_recent_delay_rate, 0) AS seller_recent_delay_rate,
     
+    -- NEW: Seller burstiness (time since last order in seconds)
+    COALESCE(slb.seconds_since_last_seller_order, 2592000) AS seconds_since_last_seller_order,
+    
+    -- NEW: Seller intensity (Backlog relative to their average volume)
+    COALESCE(sb.seller_state_backlog, 0) / NULLIF(COUNT(ois.seller_id) OVER(PARTITION BY ois.seller_id), 0) AS seller_intensity_score,
+    
+    -- NEW: Route-level historical delay rate (seller_state -> customer_state)
+    COALESCE(rd.route_delay_rate, 0) AS route_delay_rate
+
 FROM base_orders o
 JOIN customers c ON o.customer_id = c.customer_id
 JOIN order_item_summary ois ON o.order_id = ois.order_id
@@ -137,6 +160,17 @@ LEFT JOIN seller_history sh ON o.order_id = sh.order_id
 LEFT JOIN seller_review_history srh ON o.order_id = srh.order_id
 LEFT JOIN zip_coordinates gc ON c.customer_zip_code_prefix = gc.zip_code
 LEFT JOIN zip_coordinates gs ON s.seller_zip_code_prefix = gs.zip_code
+LEFT JOIN (
+    -- NEW: Time between seller orders
+    SELECT 
+        bo.order_id,
+        TIMESTAMPDIFF(SECOND, 
+            LAG(bo.order_purchase_timestamp) OVER(PARTITION BY ois.seller_id ORDER BY bo.order_purchase_timestamp),
+            bo.order_purchase_timestamp
+        ) AS seconds_since_last_seller_order
+    FROM base_orders bo
+    JOIN order_item_summary ois ON bo.order_id = ois.order_id
+) slb ON o.order_id = slb.order_id
 LEFT JOIN (
     -- Customer Purchase History: Count total orders for this unique customer identity
     -- Note: customers table has customer_unique_id for this, but base_orders uses customer_id (order-specific)
@@ -187,4 +221,18 @@ LEFT JOIN (
         ) AS customer_state_backlog
     FROM base_orders bo
     JOIN customers c ON bo.customer_id = c.customer_id
-) cb ON o.order_id = cb.order_id;
+) cb ON o.order_id = cb.order_id
+LEFT JOIN (
+    -- NEW: Route-level delay rate (seller_state -> customer_state historical performance)
+    SELECT
+        bo.order_id,
+        AVG(bo.is_late) OVER(
+            PARTITION BY s.seller_state, c.customer_state
+            ORDER BY bo.order_purchase_timestamp
+            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+        ) AS route_delay_rate
+    FROM base_orders bo
+    JOIN order_item_summary ois ON bo.order_id = ois.order_id
+    JOIN sellers s ON ois.seller_id = s.seller_id
+    JOIN customers c ON bo.customer_id = c.customer_id
+) rd ON o.order_id = rd.order_id;

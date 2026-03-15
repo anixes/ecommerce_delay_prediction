@@ -13,33 +13,33 @@ stages:
       size: 2079
     - path: sql/feature_queries.sql
       hash: md5
-      md5: fc9cdd6a53d8cb509290848641e77ac7
-      size: 7097
+      md5: acbb823c1affca373cd8c82a71699cbd
+      size: 7907
     outs:
     - path: data/interim/analytical_dataset.csv
       hash: md5
-      md5: c9f1f7c501cf078b088d8bcd87cce1a4
-      size: 23901074
+      md5: 8db96c0f60ad01f678e0e4a2b98aa4f4
+      size: 25201438
   engineer_features:
     cmd: python delivery_delay_prediction/features.py
     deps:
     - path: data/interim/analytical_dataset.csv
       hash: md5
-      md5: c9f1f7c501cf078b088d8bcd87cce1a4
-      size: 23901074
+      md5: 8db96c0f60ad01f678e0e4a2b98aa4f4
+      size: 25201438
     - path: delivery_delay_prediction/config.py
       hash: md5
       md5: 1c403cc591f9d2290b44653103d747eb
       size: 1354
     - path: delivery_delay_prediction/features.py
       hash: md5
-      md5: bb66ab1b56f6674833edbe8b78a81367
-      size: 3998
+      md5: a4d829c9977ead0578b2efb1cb401c22
+      size: 4633
     outs:
     - path: data/processed/features.csv
       hash: md5
-      md5: c07ccc9f8d8e8c9e1a0c59d26ea1e2e2
-      size: 23570350
+      md5: 80f4aacd218659c3a19c2f4b8df7fda3
+      size: 32651124
   train_model:
     cmd: python delivery_delay_prediction/train.py
     deps:

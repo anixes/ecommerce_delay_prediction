@@ -15,6 +15,7 @@ Late deliveries negatively impact customer satisfaction and often lead to poor r
 ### Target Variable
 
 **Late Delivery**
+
 - `1` = Order delivered after the estimated delivery date
 - `0` = Order delivered on or before the estimated date
 
@@ -60,89 +61,60 @@ The resulting analytical dataset represents one row per order and serves as the 
 
 ## Feature Engineering
 
-### Customer Features
-- Number of previous purchases
-- Historical review behavior
-- Purchase frequency
+### 🚀 Process Delay Sprint (New)
 
-### Seller Features
-- Historical delivery delay rate
-- Average review score
-- Seller reliability indicators
+To push performance toward the 0.40 target, we added targeted features to address specific logistics blindspots:
 
-### Logistics Features
-- Seller–customer geographic distance
-- Shipping performance by region
+- **Holiday Proximity**: `days_to_nearest_holiday` captures the "peak season" stress on the shipping network.
+- **Seller Stress**: `seller_stress_ratio` identifies individual sellers falling behind their regional peers.
+- **Hub Interaction**: Flags for São Paulo (`SP`) hub congestion (`is_hub_delivery`).
 
-### Order Features
-- Number of items
-- Total order value
-- Product categories
-- Payment type
+### Logistics & Core Features
 
-### Temporal Features
-- Order month
-- Weekday vs weekend
-- Seasonal trends
+- **Required Velocity**: `distance_km` / `lead_time_estimated` (High impact).
+- **Route Risk**: Historical delay rates for specific origin-destination pairs.
+- **Backlog**: Real-time state-level order volume.
 
 ---
 
-## Modeling Approach
+## Modeling & Results
 
-The task is formulated as a **binary classification problem**.
+After extensive hyperparameter tuning using Optuna, **CatBoost** was selected as the final production model due to its superior handling of the categorical nature of the Olist dataset and its ability to capture complex non-linear interactions between logistics variables.
 
-**Models evaluated**:
-- Logistic Regression (baseline)
-- Random Forest
-- Gradient Boosting (LightGBM / XGBoost)
+### Final Performance
 
-Hyperparameter tuning is performed using cross-validation.
+- **Primary Metric (PR-AUC)**: **0.3540**
+- **Model Type**: CatBoost Classifier
 
----
+### Top Drivers of Delay
 
-## Evaluation Metrics
+Interpretability through feature importance reveals the primary causes of lateness:
 
-Model performance is evaluated using:
-- ROC-AUC
-- Precision
-- Recall
-- F1 Score
-
-Because delayed deliveries directly affect customer experience, the model prioritizes **recall**, ensuring the system detects as many potential delays as possible.
+1. **`purchase_month`**: Seasonal volume is the #1 driver.
+2. **`required_velocity`**: Extremely tight logistics schedules.
+3. **`route_delay_rate`**: Structural inefficiencies in specific shipping routes.
+4. **`days_to_nearest_holiday`**: Unexpected surges in process delays.
 
 ---
 
-## Model Explainability
+## Feature Generation Pipeline
 
-SHAP values are used to interpret model predictions and identify the primary drivers of delivery delays.
+### Python Feature Pipeline
 
-Common influential factors include:
-- Long shipping distances
-- Historically unreliable sellers
-- Specific product categories
-- Seasonal demand spikes
+The feature generation is handled in `delivery_delay_prediction/features.py`, which performs:
 
----
-
-## System Output
-
-The system produces a delivery risk score for each order.
-
-**Example output**:
-> Predicted Delay Probability: 0.74
-> Risk Level: High
-
-A REST API built with **FastAPI** serves the trained model and returns predictions for incoming order data. An interactive **Streamlit dashboard** allows users to input order features and visualize delivery risk predictions in real time.
+- Categorical encoding and missing value imputation.
+- Log transformations of skewed distance/volume data.
+- Interaction feature creation (e.g., `tight_schedule_risk`).
 
 ---
 
 ## Technologies Used
 
 - **Data Engineering**: MySQL, Python (Pandas, SQLAlchemy)
-- **Machine Learning**: Scikit-learn, LightGBM / XGBoost, SHAP
-- **MLOps & Experiment Tracking**: MLflow, DVC
-- **Backend & Deployment**: FastAPI, Docker
-- **Frontend Interface**: Streamlit
+- **Machine Learning**: CatBoost (Winner), LightGBM (Tuning Phase), Scikit-learn, SHAP
+- **MLOps & Tracking**: Optuna (Tuning), MLflow (Experiment Tracking), DVC
+- **Deployment**: FastAPI, Docker, Streamlit
 
 ---
 
