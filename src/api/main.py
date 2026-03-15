@@ -83,7 +83,7 @@ def predict(order: OrderInput):
     
     try:
         # 1. Convert input to DataFrame
-        data = order.dict()
+        data = order.model_dump()
         df = pd.DataFrame([data])
         
         # 2. Add temporal features that CatBoost expects (if missing from raw input)
