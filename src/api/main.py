@@ -113,13 +113,23 @@ def predict(order: OrderInput):
             if col in X.columns:
                 X[col] = X[col].fillna("UNKNOWN").astype(str)
                 
-        # 7. Get prediction
+        # 7. Get prediction and SHAP values
         prob = model.predict_proba(X)[0, 1]
+        
+        # Calculate SHAP values for this specific prediction
+        shap_values = model.get_feature_importance(data=X, type='ShapValues')[0]
+        # shap_values has len(MODEL_COLUMNS) + 1 (the last one is the base value)
+        feature_shap = dict(zip(MODEL_COLUMNS, shap_values[:-1]))
+        
+        # Get Top 3 most positive contributors to the delay risk
+        top_contributors = sorted(feature_shap.items(), key=lambda x: x[1], reverse=True)[:3]
+        contributors = [{"feature": f, "impact": round(v, 4)} for f, v in top_contributors if v > 0]
         
         return {
             "delay_probability": round(float(prob), 4),
             "is_high_risk": bool(prob > 0.5),
-            "risk_level": "High" if prob > 0.5 else "Moderate" if prob > 0.3 else "Low"
+            "risk_level": "High" if prob > 0.5 else "Moderate" if prob > 0.3 else "Low",
+            "top_risk_factors": contributors
         }
         
     except Exception as e:

@@ -108,10 +108,13 @@ def set_preset(name):
         st.session_state['seller_state_backlog'] = 4.5
         st.session_state['seller_historical_delay_rate'] = 0.15
 
+# API Configuration
+API_URL = st.sidebar.text_input("API URL", os.getenv("API_URL", "http://localhost:8000"))
+
 # Helper for API check
 def check_api():
     try:
-        r = requests.get("http://localhost:8000/", timeout=1)
+        r = requests.get(f"{API_URL}/", timeout=1)
         return r.status_code == 200
     except:
         return False
@@ -204,9 +207,10 @@ if st.button(button_label, type="primary", use_container_width=True):
         
         with st.spinner("Analyzing logistics signals..."):
             try:
-                res = requests.post("http://localhost:8000/predict", json=payload).json()
+                res = requests.post(f"{API_URL}/predict", json=payload).json()
                 prob = res["delay_probability"]
                 level = res["risk_level"]
+                factors = res.get("top_risk_factors", [])
                 
                 st.divider()
                 r1, r2 = st.columns(2)
@@ -216,6 +220,12 @@ if st.button(button_label, type="primary", use_container_width=True):
                 
                 r1.metric(prob_label, f"{prob*100:.2f}%")
                 r2.metric("Assessment", level)
+                
+                # Risk Breakdown (SHAP)
+                if factors:
+                    st.markdown("#### Risk Breakdown")
+                    for f in factors:
+                        st.info(f"The feature **{f['feature']}** is increasing the delay risk.")
                 
                 if prob > 0.5:
                     st.error(f"High Risk Alert: Predicted delay probability is {prob*100:.1f}%.")
