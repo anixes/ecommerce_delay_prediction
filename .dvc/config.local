@@ -1,0 +1,4 @@
+['remote "dagshub"']
+    auth = basic
+    user = anixes
+    password = 64e50c35adcc33bc8a7f8e15dcd0ba912bc68d02

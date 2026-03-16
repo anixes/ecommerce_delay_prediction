@@ -1,0 +1,15 @@
+cmd: python delivery_delay_prediction/modeling/train_lightgbm.py
+deps:
+- path: data/processed/features.csv
+  hash: md5
+  md5: fe53df5f89a7fd960533665600b50cb8
+  size: 42295316
+- path: delivery_delay_prediction/modeling/train_lightgbm.py
+  hash: md5
+  md5: 48794bfdb6598cf8013966cbc5b5f651
+  size: 3575
+outs:
+- path: models/lightgbm_baseline.txt
+  hash: md5
+  md5: 2fbdeec873a09bc157633dd232512454
+  size: 1753339

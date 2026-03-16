@@ -1,0 +1,15 @@
+cmd: python delivery_delay_prediction/modeling/tune_catboost.py --n-trials 50
+deps:
+- path: data/processed/features.csv
+  hash: md5
+  md5: fe53df5f89a7fd960533665600b50cb8
+  size: 42295316
+- path: delivery_delay_prediction/modeling/tune_catboost.py
+  hash: md5
+  md5: 7176f9a17ddf77c28222c7387f4772a4
+  size: 5110
+outs:
+- path: models/catboost_tuned.cbm
+  hash: md5
+  md5: 1d22f8f92590fc8abaa73d318b1d65d4
+  size: 2353552

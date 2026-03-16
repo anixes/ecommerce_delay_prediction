@@ -1,0 +1,5 @@
+[core]
+    no_scm = True
+    remote = dagshub
+['remote "dagshub"']
+    url = https://dagshub.com/anixes/ecommerce_delay_prediction.dvc

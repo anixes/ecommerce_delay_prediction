@@ -1,0 +1,19 @@
+cmd: python delivery_delay_prediction/modeling/predict.py
+deps:
+- path: data/processed/features.csv
+  hash: md5
+  md5: fe53df5f89a7fd960533665600b50cb8
+  size: 42295316
+- path: delivery_delay_prediction/modeling/predict.py
+  hash: md5
+  md5: 71b68c10d6b176a2558813995d0b207f
+  size: 2364
+- path: models/catboost_baseline.cbm
+  hash: md5
+  md5: d142c938b90e7ace072db20a8dc34ff9
+  size: 1381436
+outs:
+- path: data/processed/predictions.csv
+  hash: md5
+  md5: 02bba4e9b31cfb36fe2430aefdac16c8
+  size: 5371173

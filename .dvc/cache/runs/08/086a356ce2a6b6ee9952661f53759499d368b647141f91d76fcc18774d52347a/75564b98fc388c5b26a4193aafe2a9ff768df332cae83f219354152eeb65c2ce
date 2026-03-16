@@ -1,0 +1,19 @@
+cmd: python delivery_delay_prediction/dataset.py
+deps:
+- path: delivery_delay_prediction/config.py
+  hash: md5
+  md5: b6f16b01e2b00a4e3de4f99a64dbe4fa
+  size: 1355
+- path: delivery_delay_prediction/dataset.py
+  hash: md5
+  md5: 5b47100e87bfa863cf44fc6700fd87bb
+  size: 1939
+- path: sql/feature_queries.sql
+  hash: md5
+  md5: 4c39537d988989c2c14bbf1030085a40
+  size: 9381
+outs:
+- path: data/interim/analytical_dataset.csv
+  hash: md5
+  md5: 9f9bec989c3547b5d070a9fe36ad66ee
+  size: 27244923

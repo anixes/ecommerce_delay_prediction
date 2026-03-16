@@ -1,0 +1,15 @@
+cmd: python delivery_delay_prediction/modeling/tune_lightgbm.py --n-trials 50
+deps:
+- path: data/processed/features.csv
+  hash: md5
+  md5: fe53df5f89a7fd960533665600b50cb8
+  size: 42295316
+- path: delivery_delay_prediction/modeling/tune_lightgbm.py
+  hash: md5
+  md5: 543a9f26d8f06bd69dd76f0f8df177f3
+  size: 4378
+outs:
+- path: models/lightgbm_tuned.txt
+  hash: md5
+  md5: 796651934f1a361c64f3890626186b60
+  size: 2635292

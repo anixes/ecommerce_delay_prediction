@@ -1,0 +1,23 @@
+cmd: python delivery_delay_prediction/train.py
+deps:
+- path: data/processed/features.csv
+  hash: md5
+  md5: fe53df5f89a7fd960533665600b50cb8
+  size: 42295316
+- path: delivery_delay_prediction/config.py
+  hash: md5
+  md5: b6f16b01e2b00a4e3de4f99a64dbe4fa
+  size: 1355
+- path: delivery_delay_prediction/features.py
+  hash: md5
+  md5: c61293a7e0a81913b3216532ab03f0da
+  size: 7538
+- path: delivery_delay_prediction/train.py
+  hash: md5
+  md5: e94b26c87ec03a0c84274dc5840b9509
+  size: 6480
+outs:
+- path: models/catboost_baseline.cbm
+  hash: md5
+  md5: d142c938b90e7ace072db20a8dc34ff9
+  size: 1381436
