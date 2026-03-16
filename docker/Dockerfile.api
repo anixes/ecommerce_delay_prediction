@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
 COPY . .
+
+# Explicitly copy models (tracked by DVC, pulled in CI)
+COPY models/ /app/models/
 
 # Set PYTHONPATH
 ENV PYTHONPATH=/app

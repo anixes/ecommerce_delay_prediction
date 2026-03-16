@@ -6,6 +6,16 @@ services:
     ports:
       - "8001:8000"
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   dashboard:
     image: ghcr.io/${GITHUB_REPOSITORY}/dashboard:latest
@@ -16,3 +26,13 @@ services:
     depends_on:
       - api
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

@@ -66,6 +66,14 @@ jobs:
       - name: Pull Model from DVC
         run: dvc pull -r dagshub
 
+      - name: Validate Model Existence
+        run: |
+          if [ ! -f models/catboost_tuned.cbm ]; then
+            echo "Error: Model file models/catboost_tuned.cbm not found!"
+            exit 1
+          fi
+          echo "Model validation successful."
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -111,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v0.1.10
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
@@ -119,17 +127,30 @@ jobs:
           script: |
             mkdir -p ecommerce_deploy
             cd ecommerce_deploy
-            # Update the docker-compose.yml on the server
+            # Update the docker-compose.yml on the server with deterministic tags
             cat <<EOF > docker-compose.yml
             version: '3.8'
             services:
               api:
-                image: ghcr.io/${{ github.repository }}/api:latest
+                image: ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+                container_name: ecommerce_api
                 ports:
                   - "8001:8000"
                 restart: always
+                logging:
+                  driver: "json-file"
+                  options:
+                    max-size: "10m"
+                    max-file: "3"
+                healthcheck:
+                  test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 3
+
               dashboard:
-                image: ghcr.io/${{ github.repository }}/dashboard:latest
+                image: ghcr.io/${{ github.repository }}/dashboard:${{ github.sha }}
+                container_name: ecommerce_dashboard
                 ports:
                   - "8502:8501"
                 environment:
@@ -137,6 +158,16 @@ jobs:
                 depends_on:
                   - api
                 restart: always
+                logging:
+                  driver: "json-file"
+                  options:
+                    max-size: "10m"
+                    max-file: "3"
+                healthcheck:
+                  test: ["CMD", "curl", "-f", "http://localhost:8501/"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 3
             EOF
             # Trigger update with security and reliability refinements
             echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
