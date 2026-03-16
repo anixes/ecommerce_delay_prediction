@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - DB_HOST=host.docker.internal # If needed for MySQL
     volumes:
@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.dashboard
     ports:
-      - "8501:8501"
+      - "8502:8501"
     environment:
       - API_URL=http://api:8000
     depends_on:

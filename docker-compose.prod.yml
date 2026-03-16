@@ -4,13 +4,13 @@ services:
   api:
     image: ghcr.io/${GITHUB_REPOSITORY}/api:latest
     ports:
-      - "8000:8000"
+      - "8001:8000"
     restart: always
 
   dashboard:
     image: ghcr.io/${GITHUB_REPOSITORY}/dashboard:latest
     ports:
-      - "8501:8501"
+      - "8502:8501"
     environment:
       - API_URL=http://api:8000
     depends_on:
