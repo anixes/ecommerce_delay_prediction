@@ -1,106 +1,144 @@
 name: CI Pipeline
 
 on:
-    push:
-        branches: [main, master]
-    pull_request:
-        branches: [main, master]
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
 permissions:
-    contents: read
-    packages: write
+  contents: read
+  packages: write
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-            - name: Set up Python 3.9
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.9"
-            - name: Install Ruff
-              run: pip install ruff
-            - name: Run Ruff
-              run: ruff check .
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Run Ruff
+        run: ruff check .
 
-    test:
-        needs: lint
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-            - name: Set up Python 3.9
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.9"
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install pytest httpx
-                  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-            - name: Run Tests
-              env:
-                  PYTHONPATH: .
-              run: |
-                  pytest tests/
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest httpx
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Run Tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/
 
-    build-and-push:
-        needs: test
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
+  build-and-push:
+    needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-            - name: Install DVC
-              run: pip install dvc[s3]
+      - name: Install DVC
+        run: pip install dvc[s3]
 
-            - name: Configure DVC DAGshub Remote
-              env:
-                  DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-                  DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-              run: |
-                  dvc remote modify dagshub --local auth basic
-                  dvc remote modify dagshub --local user $DAGSHUB_USERNAME
-                  dvc remote modify dagshub --local password $DAGSHUB_TOKEN
+      - name: Configure DVC DAGshub Remote
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          dvc remote modify dagshub --local auth basic
+          dvc remote modify dagshub --local user $DAGSHUB_USERNAME
+          dvc remote modify dagshub --local password $DAGSHUB_TOKEN
 
-            - name: Pull Model from DVC
-              run: dvc pull -r dagshub
+      - name: Pull Model from DVC
+        run: dvc pull -r dagshub
 
-            - name: Log in to GitHub Container Registry
-              uses: docker/login-action@v2
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Extract metadata (tags, labels) for API
-              id: meta-api
-              uses: docker/metadata-action@v4
-              with:
-                  images: ghcr.io/${{ github.repository }}/api
+      - name: Extract metadata (tags, labels) for API
+        id: meta-api
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}/api
 
-            - name: Build and push API image
-              uses: docker/build-push-action@v4
-              with:
-                  context: .
-                  file: docker/Dockerfile.api
-                  push: true
-                  tags: |
-                      ghcr.io/${{ github.repository }}/api:latest
-                      ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+      - name: Build and push API image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/api:latest
+            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
 
-            - name: Extract metadata (tags, labels) for Dashboard
-              id: meta-dashboard
-              uses: docker/metadata-action@v4
-              with:
-                  images: ghcr.io/${{ github.repository }}/dashboard
+      - name: Extract metadata (tags, labels) for Dashboard
+        id: meta-dashboard
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}/dashboard
 
-            - name: Build and push Dashboard image
-              uses: docker/build-push-action@v4
-              with:
-                  context: .
-                  file: docker/Dockerfile.dashboard
-                  push: true
-                  tags: |
-                      ghcr.io/${{ github.repository }}/dashboard:latest
-                      ghcr.io/${{ github.repository }}/dashboard:${{ github.sha }}
+      - name: Build and push Dashboard image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.dashboard
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/dashboard:latest
+            ghcr.io/${{ github.repository }}/dashboard:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p ecommerce_deploy
+            cd ecommerce_deploy
+            # Update the docker-compose.yml on the server
+            cat <<EOF > docker-compose.yml
+            version: '3.8'
+            services:
+              api:
+                image: ghcr.io/${{ github.repository }}/api:latest
+                ports:
+                  - "8001:8000"
+                restart: always
+              dashboard:
+                image: ghcr.io/${{ github.repository }}/dashboard:latest
+                ports:
+                  - "8502:8501"
+                environment:
+                  - API_URL=http://api:8000
+                depends_on:
+                  - api
+                restart: always
+            EOF
+            # Trigger update
+            sudo docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            sudo docker-compose pull
+            sudo docker-compose up -d
