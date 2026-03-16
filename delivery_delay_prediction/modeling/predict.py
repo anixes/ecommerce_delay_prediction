@@ -1,14 +1,15 @@
-import pandas as pd
 from pathlib import Path
-from loguru import logger
-import typer
+
 from catboost import CatBoostClassifier
+from loguru import logger
+import pandas as pd
+import typer
+
 from delivery_delay_prediction.config import (
-    MODELS_DIR, 
-    PROCESSED_DATA_DIR, 
-    CAT_FEATURES, 
-    CATBOOST_TUNED_MODEL, 
-    CATBOOST_BASELINE_MODEL
+    CAT_FEATURES,
+    CATBOOST_BASELINE_MODEL,
+    CATBOOST_TUNED_MODEL,
+    PROCESSED_DATA_DIR,
 )
 
 app = typer.Typer()

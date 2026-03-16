@@ -1,46 +1,57 @@
-# Handoff: E-Commerce Delivery Delay Prediction
+# Handoff: E-Commerce Delivery Delay Prediction (Production Ready)
 
 ## 🎯 Project Objective
 
-Predict whether an order will be delivered later than the estimated delivery date using the Olist E-commerce dataset.
+Predict whether an order will be delayed using the Olist dataset and provide actionable risk breakdowns to users via a premium web interface.
 
-## 🚀 Key Achievements (Updated)
+## 🚀 Key Achievements (Final)
 
-* **Performance Evolution:** Successfully pushed PR-AUC from **0.3498** to **0.3540**.
-* **Process Delay Sprint:** Targeted the "Relaxed Velocity" blindspot by adding holiday proximity and seller stress metrics.
-* **High-Impact Signals:**
-  * **`days_to_nearest_holiday`**: Now the #4 most important feature (5.7%).
-  * `required_velocity`: Remains the #2 pillar of the model.
-  * `seller_stress_ratio`: New interaction catching individual seller spikes vs. state averages.
+* **Performance:** Reached **0.3540 PR-AUC** with optimized CatBoost features.
+* **Production Architecture:**
+  * **Backend:** FastAPI service with lazy-loaded CatBoost and SHAP explainability.
+  * **Frontend:** Premium Streamlit dashboard with "Risk Breakdown" factors.
+  * **Containerization:** Multi-container setup via Docker Compose.
+* **Verified CI/CD:** Robust GitHub Actions pipeline with automated health checks and mocked ML testing (ensures cloud stability without 40MB model binaries).
+* **Explainable AI:** Integrated real-time SHAP analysis to show why a delivery is high-risk in human-readable terms.
 
-## 📊 Final Model Status
+## 🏗️ System Architecture
 
-* **Model:** CatBoost Classifier (`models/catboost_tuned.cbm`)
-* **Best Parameters:** Updated in `models/best_catboost_params.json`
-* **PR-AUC (5-Fold CV):** **0.3540**
-* **Top 5 Features (Importance):**
-    1. `purchase_month` (11.1%)
-    2. `required_velocity` (7.4%)
-    3. `route_delay_rate` (6.4%)
-    4. **`days_to_nearest_holiday`** (5.7%)
-    5. `lead_time_days_estimated` (5.6%)
+The project is split into two main services managed by `docker-compose.yml`:
 
-## 🛠️ Data Pipeline
+| Service | Technology | Port | Description |
+| :--- | :--- | :--- | :--- |
+| **API** | FastAPI / CatBoost | 8000 | Prediction engine & SHAP calculator. |
+| **Dashboard** | Streamlit | 8501 | User interface for risk assessment. |
 
-1. **Python Feature Pipeline:** `delivery_delay_prediction/features.py` now includes holiday distance logic and hub interaction flags.
-2. **Tuning:** Re-tuned using `delivery_delay_prediction/modeling/tune_catboost.py` (GPU).
+## 🛠️ Data & ML Pipeline
 
-## 📂 Final Workspace State
+1. **Feature Engineering:** `delivery_delay_prediction/features.py` (Includes seasonality, holiday proximity, and logistics ratios).
+2. **Model:** `models/catboost_tuned.cbm` (Optimized on GPU).
+3. **Explainability:** SHAP values are computed per-prediction in `src/api/main.py` using `catboost.Pool`.
 
-* `models/` contains the 0.3540 binary and updated params.
-* `delivery_delay_prediction/modeling/error_analysis.py` is available for deep-diving into specific state failures.
+## 📂 Project Structure Highlights
 
-## ⏭️ Next Steps to 0.40
+* `.github/workflows/ci.yml`: Automated testing and linting.
+* `src/api/main.py`: Main FastAPI application.
+* `src/dashboard/app.py`: Premium Streamlit interface.
+* `tests/test_api.py`: Mocked suite for cloud-safe verification.
+* `Dockerfile.api` & `Dockerfile.dashboard`: Production-ready images.
 
-* **External Weather Data:** Add regional rainfall/weather events from Brazil's historical climate data.
-* **Seller Quality 2.0:** Weight avg photos and description length more heavily in a separate "trust" sub-model.
-* **SP Hub Deep-Dive:** The SP hub still has high variance; consider a dedicated sub-pipeline for SP-to-SP deliveries.
+## ⏭️ Next Steps to 0.40+
 
-**Status:** Optimized & Updated.
+* **Weather Integration:** Incorporate rain/storm data from Brazil's weather history into the `features.py` pipeline.
+* **Seller Quality Model:** Develop a separate NLP-based model for product description quality.
+* **Real-time Logistics:** Integrate with actual shipping carrier APIs for live transit updates.
+
+## 🧪 Verification
+
+Run the following to verify the local environment:
+
+```bash
+docker-compose up --build
+pytest tests/
+```
+
+**Status:** Production Ready.
 **Date:** 2026-03-16
 **Engineer:** Antigravity (AI Assistant)

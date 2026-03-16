@@ -1,9 +1,11 @@
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
 from loguru import logger
+import numpy as np
+import pandas as pd
 import typer
-from delivery_delay_prediction.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR, CAT_FEATURES
+
+from delivery_delay_prediction.config import CAT_FEATURES, INTERIM_DATA_DIR, PROCESSED_DATA_DIR
 
 app = typer.Typer()
 

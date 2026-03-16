@@ -1,16 +1,11 @@
 from pathlib import Path
 
 from loguru import logger
-from tqdm import tqdm
-import typer
-
-from delivery_delay_prediction.config import INTERIM_DATA_DIR, DATABASE_URL
-
 import pandas as pd
 from sqlalchemy import create_engine, text
 import typer
-from loguru import logger
-from delivery_delay_prediction.config import DATABASE_URL, PROCESSED_DATA_DIR
+
+from delivery_delay_prediction.config import DATABASE_URL, INTERIM_DATA_DIR
 
 app = typer.Typer()
 

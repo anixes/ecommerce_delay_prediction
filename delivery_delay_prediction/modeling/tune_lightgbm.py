@@ -1,15 +1,23 @@
-import typer
 from pathlib import Path
+
 from loguru import logger
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT, CAT_FEATURES, LIGHTGBM_TUNED_MODEL
+import typer
+
+from delivery_delay_prediction.config import (
+    CAT_FEATURES,
+    LIGHTGBM_TUNED_MODEL,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    PROJ_ROOT,
+)
 
 app = typer.Typer()
 
 def objective(trial, X, y, n_splits):
-    import numpy as np
     import lightgbm as lgb
-    from sklearn.model_selection import StratifiedKFold
+    import numpy as np
     from sklearn.metrics import average_precision_score
+    from sklearn.model_selection import StratifiedKFold
 
     params = {
         "objective": "binary",
@@ -57,10 +65,11 @@ def main(
     n_splits: int = 3,
     sample_fraction: float = 1.0
 ):
-    import pandas as pd
-    import optuna
     import json
+
     import lightgbm as lgb
+    import optuna
+    import pandas as pd
     
     logger.info(f"Loading features for LightGBM tuning from {data_path}...")
     df = pd.read_csv(data_path)

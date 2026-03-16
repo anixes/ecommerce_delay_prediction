@@ -1,15 +1,22 @@
-import pandas as pd
-import numpy as np
-import optuna
-import typer
 from pathlib import Path
+
+from catboost import CatBoostClassifier, Pool
 from loguru import logger
 import mlflow
-from catboost import CatBoostClassifier, Pool
+import numpy as np
+import optuna
+import pandas as pd
+from sklearn.metrics import average_precision_score
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import average_precision_score, f1_score
+import typer
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, PROJ_ROOT, CAT_FEATURES, CATBOOST_TUNED_MODEL
+from delivery_delay_prediction.config import (
+    CAT_FEATURES,
+    CATBOOST_TUNED_MODEL,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    PROJ_ROOT,
+)
 
 app = typer.Typer()
 

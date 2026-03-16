@@ -1,8 +1,14 @@
-import typer
 from pathlib import Path
-from loguru import logger
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, CAT_FEATURES, LIGHTGBM_BASELINE_MODEL
+from loguru import logger
+import typer
+
+from delivery_delay_prediction.config import (
+    CAT_FEATURES,
+    LIGHTGBM_BASELINE_MODEL,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+)
 
 app = typer.Typer()
 
@@ -11,11 +17,11 @@ def main(
     data_path: Path = PROCESSED_DATA_DIR / "features.csv",
     n_splits: int = 5
 ):
-    import pandas as pd
-    import numpy as np
     import lightgbm as lgb
-    from sklearn.model_selection import StratifiedKFold
+    import numpy as np
+    import pandas as pd
     from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score
+    from sklearn.model_selection import StratifiedKFold
 
     logger.info(f"Loading features for LightGBM from {data_path}...")
     df = pd.read_csv(data_path)

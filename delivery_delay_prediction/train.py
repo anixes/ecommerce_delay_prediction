@@ -1,15 +1,25 @@
-import pandas as pd
-import numpy as np
 from pathlib import Path
-import typer
+
+from catboost import CatBoostClassifier, Pool
 from loguru import logger
 import mlflow
 import mlflow.catboost
-from catboost import CatBoostClassifier, Pool
+import numpy as np
+import pandas as pd
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score, average_precision_score
+import typer
 
-from delivery_delay_prediction.config import PROCESSED_DATA_DIR, MODELS_DIR, CAT_FEATURES, CATBOOST_BASELINE_MODEL
+from delivery_delay_prediction.config import (
+    CATBOOST_BASELINE_MODEL,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+)
 from delivery_delay_prediction.features import get_catboost_cat_features
 
 app = typer.Typer()
@@ -52,7 +62,7 @@ def main(
     # MLflow tracking
     # ------------------
     mlflow.set_experiment("E-Commerce Delivery Delay Baseline")
-    with mlflow.start_run() as run:
+    with mlflow.start_run():
         mlflow.log_param("model", "CatBoostClassifier")
         mlflow.log_param("cv_splits", n_splits)
         mlflow.log_param("epochs", epochs)

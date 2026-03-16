@@ -14,3 +14,4 @@ catboost
 optuna
 loguru
 typer
+ruff
