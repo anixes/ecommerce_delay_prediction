@@ -6,6 +6,10 @@
 
 **Public URL**: <http://13.204.212.148:8502>
 
+> [!TIP]
+> **Mobile Users**: If the link doesn't open from the GitHub app, try opening it in your mobile browser (Chrome/Safari) directly: **<http://13.204.212.148:8502>**
+>
+
 ## 📖 Overview
 
 This project builds a professional-grade MLOps system that predicts whether an e-commerce order from the **Olist Brazilian Dataset** will be delivered late. It demonstrates a full-lifecycle "Push-to-Deploy" pipeline, integrating advanced machine learning, data engineering, and automated cloud infrastructure.
