@@ -8,17 +8,16 @@
 
 > [!TIP]
 > **Mobile Users**: If the link doesn't open from the GitHub app, try opening it in your mobile browser (Chrome/Safari) directly: **<http://13.204.212.148:8502>**
->
 
 ## 📖 Overview
 
-This project builds a professional-grade MLOps system that predicts whether an e-commerce order from the **Olist Brazilian Dataset** will be delivered late. It demonstrates a full-lifecycle "Push-to-Deploy" pipeline, integrating advanced machine learning, data engineering, and automated cloud infrastructure.
+A complete end-to-end Machine Learning system for predicting delivery delays in the **Olist Brazilian E-Commerce** marketplace. The project demonstrates a full-lifecycle "Push-to-Deploy" pipeline, integrating advanced machine learning, data engineering, and automated cloud infrastructure.
 
 ---
 
-## 🏗️ System Design (MLOps Architecture)
+## 📐 System Architecture
 
-The system is designed for high reliability and reproducibility, utilizing a modern MLOps stack.
+The system follows a modern MLOps architecture, ensuring reproducibility and scalability.
 
 ```mermaid
 graph TD
@@ -33,7 +32,7 @@ graph TD
         E --> F[Docker Build & Model Baking]
     end
     
-    subgraph Registry_Containerization
+    subgraph Container_Registry
         F --> G[Push SHA-tagged Images to GHCR]
     end
     
@@ -44,7 +43,7 @@ graph TD
         I --> K[FastAPI Service :8001]
     end
     
-    subgraph MLOps_Backbone
+    subgraph MLOps_Foundation
         L[DAGsHub / DVC] -- Models/Data --> E
         M[MLflow / Optuna] -- Tracking --> L
     end
@@ -52,71 +51,132 @@ graph TD
 
 ---
 
-## 📂 Project Structure
+## 🏗️ Technical Component Overview
 
-```text
-├── .github/workflows/     # CI/CD (Lint, Test, Bake, Deploy)
-├── delivery_delay_prediction/
-│   ├── modeling/          # Train, Tune, Evaluate (CatBoost, Optuna)
-│   ├── features.py        # Logic for 20+ engineered features
-│   └── config.py          # Environment & Path management
-├── docker/                # Deployment-ready Dockerfiles (3.11-slim)
-├── models/                # Binary artifacts (.cbm) pointers (DVC)
-├── src/
-│   ├── api/               # FastAPI prediction service
-│   └── dashboard/         # Streamlit interactive application
-├── tests/                 # Automated API & Feature verification
-├── docker-compose.yml     # Multi-container orchestration
-├── dvc.yaml               # DVC Data Pipeline definition
-└── requirements.txt       # Project dependencies
+The application is composed of three decoupled logical components:
+
+1. **Machine Learning Pipeline (`delivery_delay_prediction/`)**
+   - Built with **CatBoost** for optimal handling of categorical features (states, categories).
+   - **Hyperparameter Tuning**: Powered by **Optuna** for Bayesian search.
+   - **Versioning**: Model artifacts (`.cbm`) are version-controlled via **DVC** and hosted on **DAGsHub**.
+
+2. **Backend API (`src/api/`)**
+   - High-performance **FastAPI** service serving the pre-trained CatBoost model.
+   - Implements robust Pydantic schemas for data validation.
+   - Deterministic image tagging (Git SHA) ensures the running code matches the specific commit.
+
+3. **Frontend Dashboard (`src/dashboard/`)**
+   - Interactive UI built with **Streamlit** for real-time risk assessment.
+   - Features scenario presets (Holiday Rush, Long Distance) to demonstrate model sensitivity.
+   - Communicates with the FastAPI backend over internal Docker networking.
+
+---
+
+## 🛤️ Training Lifecycle & MLOps
+
+### 1. Data Versioning & Storage
+
+We use **DVC** to manage large datasets and binary models without bloating the Git history.
+
+- **Remote**: DAGsHub (S3-compatible storage).
+- **Parity**: Git Commits are linked 1:1 with DVC data snapshots.
+
+### 2. Experiment Tracking
+
+Training experiments are tracked via **MLflow**, capturing:
+
+- **Metrics**: PR-AUC (Primary), F1-Score, RMSE.
+- **Parameters**: Best hyperparameters found by Optuna.
+- **Artifacts**: Feature importance plots and model versions.
+
+---
+
+## 🔌 API Contract (V1)
+
+The backend provides a stable REST interface for prediction services.
+
+### `POST /predict`
+
+Estimates the probability of a delivery being late.
+
+**Request Body (`application/json`):**
+
+```json
+{
+  "shipping_distance_km": 150.0,
+  "estimated_lead_time_days": 12.0,
+  "seller_state": "SP",
+  "customer_state": "SP",
+  "purchase_hour": 10,
+  "purchase_day_of_week": 1
+}
+```
+
+**Response Body:**
+
+```json
+{
+  "is_late_probability": 0.12,
+  "prediction": 0,
+  "model_version": "5d594c6"
+}
 ```
 
 ---
 
-## 🛠️ Key Technical Features
+## 🚀 How to Run Locally
 
-### **1. Professional MLOps Stack**
+### Approach 1: The Easy Way (Docker Compose)
 
-- **Data Version Control (DVC)**: Managed via **DAGsHub**, ensuring models and large analytical datasets are versioned alongside code without bloating the repository.
-- **Model Baking Strategy**: The CI pipeline pulls real model artifacts from DAGsHub and "bakes" them into production Docker images, ensuring zero external dependencies during runtime.
-- **Traceability**: Every deployment is deterministic, using **Git Commit SHAs** as container tags in the GitHub Container Registry (GHCR).
-
-### **2. Automated CI/CD (GitHub Actions)**
-
-- **Linting & Safety**: Automated code quality checks with `Ruff`.
-- **"Fail-Fast" Guards**: CI validates model existence and checksums before the build phase.
-- **Push-to-Deploy**: Successful builds trigger an automated SSH update to **AWS EC2**, using `docker compose` for zero-touch updates.
-
-### **3. Production Hardening**
-
-- **Disk Safety**: Service-level log rotation implemented to prevent EC2 disk exhaustion.
-- **Reliability**: Configured Docker health checks to ensure the Dashboard and API self-heal if unresponsive.
-- **Infrastructure**: Running on AWS EC2 with an Elastic IP for persistent availability.
-
----
-
-## 🚀 Getting Started
-
-### **Local Deployment**
+*Best for running the entire stack (API + Dashboard) instantly.*
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/anixes/ecommerce_delay_prediction.git
 cd ecommerce_delay_prediction
 
-# Start the full stack (API + Dashboard)
-docker-compose up --build
+# Start the services
+docker compose up --build
 ```
 
-Access the local dashboard at `http://localhost:8502`.
+- 🏠 **Dashboard**: `http://localhost:8502`
+- ⚙️ **FastAPI Docs**: `http://localhost:8001/docs`
+
+### Approach 2: Manual Development Mode
+
+*Best for actively modifying code or training models.*
+
+```bash
+# Setup environment
+python -m venv venv
+source venv/bin/activate  # venv\Scripts\activate on Windows
+pip install -r requirements.txt
+
+# Start API
+uvicorn src.api.main:app --reload --port 8000
+
+# Start Dashboard (in new terminal)
+streamlit run src/dashboard/app.py --server.port 8501
+```
 
 ---
 
-## 📈 Model Performance
+## 🧪 Testing and CI/CD
 
-- **Model**: CatBoost Classifier
-- **Metric (PR-AUC)**: **0.3540** (Significant improvement over baseline)
-- **Top Features**: Route-specific delay rates, `days_to_nearest_holiday`, and seller-to-customer logistics velocity.
+Continuous Integration is configured via **GitHub Actions** (`.github/workflows/ci.yml`):
+
+1. **Linting**: `Ruff` checks for code quality and style.
+2. **Testing**: `Pytest` suite for API and feature logic.
+3. **Baking**: `DVC pull` is executed *inside* CI to bake the real model into the Docker image.
+4. **Deploy**: Automated SSH deployment to AWS EC2 using modern `docker compose` syntax.
+
+---
+
+## 🗺️ Roadmap (v2)
+
+- **Live Monitoring Dashboard**: Integrate Grafana to monitor model drift and API latency in real-time.
+- **Auto-Retraining Loop**: Trigger a new DVC pipeline when data drift is detected in production.
+- **Multi-Model Ensemble**: Incorporate LightGBM and XGBoost variants using a voting regressor for higher PR-AUC.
 
 ---
 *Created for portfolio purposes. Demonstrates skills in: Data Engineering, ML Modeling, Docker, CI/CD, and MLOps.*
