@@ -2,9 +2,9 @@
 
 [![CI Pipeline](https://github.com/anixes/ecommerce_delay_prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/anixes/ecommerce_delay_prediction/actions)
 [![DVC Managed](https://img.shields.io/badge/Data-DVC-blue.svg)](https://dvc.org)
-[![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-brightgreen.svg)](http://13.204.212.148:8502/)
+[![Live Dashboard](https://img.shields.io/badge/Deployment-Live-brightgreen.svg?style=flat-square)](http://13.204.212.148:8502)
 
-**Deployed Application**: [http://13.204.212.148:8502/](http://13.204.212.148:8502/)
+**Public URL**: <http://13.204.212.148:8502>
 
 ## 📖 Overview
 
