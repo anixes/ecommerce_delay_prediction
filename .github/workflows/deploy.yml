@@ -60,12 +60,13 @@ jobs:
             mkdir -p ecommerce_deploy
             cd ecommerce_deploy
 
-            # Use the latest image by default
-            export IMAGE_TAG=latest
+            # Setup .env for docker-compose
+            cat <<EOF > .env
+            IMAGE_TAG=latest
+            EOF
 
             # Setup docker-compose.yml
             cat <<EOF > docker-compose.yml
-            version: '3.8'
             services:
               api:
                 image: ghcr.io/${{ github.repository }}/api:\${IMAGE_TAG}
@@ -106,8 +107,8 @@ jobs:
                   retries: 3
             EOF
 
-              sudo docker compose pull
-              sudo docker compose up -d --force-recreate
+            sudo docker compose pull
+            sudo docker compose up -d --force-recreate
 
             # Automated Cleanup of old images
             sudo docker image prune -f
