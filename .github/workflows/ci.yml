@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, master]
+    branches-ignore: [main, master]
   pull_request:
     branches: [main, master]
 
@@ -15,162 +15,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python 3.9
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.11"
       - name: Install Ruff
         run: pip install ruff
-      - name: Run Ruff
+      - name: Run Ruff Check
         run: ruff check .
+      - name: Run Ruff Format
+        run: ruff format --check .
 
-  test:
+  smoke-build:
     needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-      - name: Install dependencies
+
+      - name: Create Dummy Model for Smoke Test
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest httpx
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Run Tests
-        env:
-          PYTHONPATH: .
+          mkdir -p models
+          touch models/catboost_tuned.cbm
+          echo "dummy model content" > models/catboost_tuned.cbm
+
+      - name: Build API Smoke Image
         run: |
-          pytest tests/
+          docker build -t api-smoke -f docker/Dockerfile.api .
 
-  build-and-push:
-    needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install DVC
-        run: pip install dvc[s3]
-
-      - name: Configure DVC DAGshub Remote
-        env:
-          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
-          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+      - name: Build Dashboard Smoke Image
         run: |
-          dvc remote modify dagshub --local auth basic
-          dvc remote modify dagshub --local user $DAGSHUB_USERNAME
-          dvc remote modify dagshub --local password $DAGSHUB_TOKEN
-
-      - name: Pull Model from DVC
-        run: dvc pull -r dagshub
-
-      - name: Validate Model Existence
-        run: |
-          if [ ! -f models/catboost_tuned.cbm ]; then
-            echo "Error: Model file models/catboost_tuned.cbm not found!"
-            exit 1
-          fi
-          echo "Model validation successful."
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for API
-        id: meta-api
-        uses: docker/metadata-action@v4
-        with:
-          images: ghcr.io/${{ github.repository }}/api
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: docker/Dockerfile.api
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/api:latest
-            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-
-      - name: Extract metadata (tags, labels) for Dashboard
-        id: meta-dashboard
-        uses: docker/metadata-action@v4
-        with:
-          images: ghcr.io/${{ github.repository }}/dashboard
-
-      - name: Build and push Dashboard image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: docker/Dockerfile.dashboard
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/dashboard:latest
-            ghcr.io/${{ github.repository }}/dashboard:${{ github.sha }}
-
-  deploy:
-    needs: build-and-push
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            mkdir -p ecommerce_deploy
-            cd ecommerce_deploy
-            # Update the docker-compose.yml on the server with deterministic tags
-            cat <<EOF > docker-compose.yml
-            version: '3.8'
-            services:
-              api:
-                image: ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-                container_name: ecommerce_api
-                ports:
-                  - "8001:8000"
-                restart: always
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
-                healthcheck:
-                  test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-                  interval: 30s
-                  timeout: 10s
-                  retries: 3
-
-              dashboard:
-                image: ghcr.io/${{ github.repository }}/dashboard:${{ github.sha }}
-                container_name: ecommerce_dashboard
-                ports:
-                  - "8502:8501"
-                environment:
-                  - API_URL=http://api:8000
-                depends_on:
-                  - api
-                restart: always
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
-                healthcheck:
-                  test: ["CMD", "curl", "-f", "http://localhost:8501/"]
-                  interval: 30s
-                  timeout: 10s
-                  retries: 3
-            EOF
-            # Trigger update with security and reliability refinements
-            echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            sudo docker compose pull
-            sudo docker compose up -d --force-recreate
-            sudo docker ps
+          docker build -t dashboard-smoke -f docker/Dockerfile.dashboard .

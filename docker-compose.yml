@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   api:
+    image: ghcr.io/anixes/ecommerce_delay_prediction/api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.api
@@ -23,6 +24,7 @@ services:
       retries: 3
 
   dashboard:
+    image: ghcr.io/anixes/ecommerce_delay_prediction/dashboard:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile.dashboard

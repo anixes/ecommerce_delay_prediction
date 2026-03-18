@@ -1,27 +1,33 @@
-FROM python:3.11-slim
+# Stage 1: Builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy the rest of the application
+# Stage 2: Runtime
+FROM python:3.11-slim AS runtime
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
+
+# GPU Bloat Removal: Strip CUDA/NVIDIA libraries for CPU-only environment
+RUN find /root/.local/lib/python3.11/site-packages -name "nvidia*" -exec rm -rf {} + && \
+    find /root/.local/lib/python3.11/site-packages -name "cuda*" -exec rm -rf {} + && \
+    find /root/.local/lib/python3.11/site-packages -name "nccl*" -exec rm -rf {} +
+
+# Copy application code
 COPY . .
-
 # Explicitly copy models (tracked by DVC, pulled in CI)
 COPY models/ /app/models/
 
-# Set PYTHONPATH
 ENV PYTHONPATH=/app
-
-# Expose port
 EXPOSE 8000
 
-# Command to run the API
 CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

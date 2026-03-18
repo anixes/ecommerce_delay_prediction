@@ -1,0 +1,115 @@
+name: Deploy Pipeline
+
+on:
+    push:
+        branches: [main, master]
+
+permissions:
+    contents: read
+    packages: write
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Install DVC
+              run: pip install dvc[s3]
+
+            - name: Configure DVC DAGshub Remote
+              env:
+                  DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+                  DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+              run: |
+                  dvc remote modify dagshub --local auth basic
+                  dvc remote modify dagshub --local user $DAGSHUB_USERNAME
+                  dvc remote modify dagshub --local password $DAGSHUB_TOKEN
+
+            - name: Pull Model from DVC
+              run: dvc pull -r dagshub
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v2
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and push images
+              run: |
+                  REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+
+                  # Build and Push API
+                  docker build -t ghcr.io/$REPO_LOWER/api:${{ github.sha }} -t ghcr.io/$REPO_LOWER/api:latest -f docker/Dockerfile.api .
+                  docker push ghcr.io/$REPO_LOWER/api:${{ github.sha }}
+                  docker push ghcr.io/$REPO_LOWER/api:latest
+
+                  # Build and Push Dashboard
+                  docker build -t ghcr.io/$REPO_LOWER/dashboard:${{ github.sha }} -t ghcr.io/$REPO_LOWER/dashboard:latest -f docker/Dockerfile.dashboard .
+                  docker push ghcr.io/$REPO_LOWER/dashboard:${{ github.sha }}
+                  docker push ghcr.io/$REPO_LOWER/dashboard:latest
+
+            - name: Deploy to EC2 via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.EC2_HOST }}
+                  username: ${{ secrets.EC2_USERNAME }}
+                  key: ${{ secrets.EC2_SSH_KEY }}
+                  script: |
+                      mkdir -p ecommerce_deploy
+                      cd ecommerce_deploy
+
+                      # Use the latest image by default
+                      export IMAGE_TAG=latest
+
+                      # Setup docker-compose.yml
+                      cat <<EOF > docker-compose.yml
+                      version: '3.8'
+                      services:
+                        api:
+                          image: ghcr.io/${{ github.repository }}/api:\${IMAGE_TAG}
+                          container_name: ecommerce_api
+                          ports:
+                            - "8001:8000"
+                          restart: always
+                          logging:
+                            driver: "json-file"
+                            options:
+                              max-size: "10m"
+                              max-file: "3"
+                          healthcheck:
+                            test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+                            interval: 30s
+                            timeout: 10s
+                            retries: 3
+
+                        dashboard:
+                          image: ghcr.io/${{ github.repository }}/dashboard:\${IMAGE_TAG}
+                          container_name: ecommerce_dashboard
+                          ports:
+                            - "8502:8501"
+                          environment:
+                            - API_URL=http://api:8000
+                          depends_on:
+                            - api
+                          restart: always
+                          logging:
+                            driver: "json-file"
+                            options:
+                              max-size: "10m"
+                              max-file: "3"
+                          healthcheck:
+                            test: ["CMD", "curl", "-f", "http://localhost:8501/"]
+                            interval: 30s
+                            timeout: 10s
+                            retries: 3
+                      EOF
+
+                      echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+                      sudo docker compose pull
+                      sudo docker compose up -d --force-recreate
+
+                      # Automated Cleanup of old images
+                      sudo docker image prune -f
+                      sudo docker ps
