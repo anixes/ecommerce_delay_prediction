@@ -1,0 +1,43 @@
+# Data and Storage
+data/
+outputs/
+mlruns/
+catboost_info/
+notebooks/
+.dvc/
+!models/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git and OS
+.git/
+.gitignore
+.gitattributes
+.DS_Store
+Thumbs.db
+
+# Documentation and configs
+README.md
+docs/
+interview_prep.md
+implementation_plan.md
+walkthrough.md
+task.md
+interview_prep_guide.pdf
+src/training/
+tests/
+Makefile
+.ruff_cache/
