@@ -163,20 +163,34 @@ streamlit run src/dashboard/app.py --server.port 8501
 
 ## 🧪 Testing and CI/CD
 
-Continuous Integration is configured via **GitHub Actions** (`.github/workflows/ci.yml`):
+Continuous Integration is configured via **GitHub Actions** with a dual-workflow strategy:
 
-1. **Linting**: `Ruff` checks for code quality and style.
-2. **Testing**: `Pytest` suite for API and feature logic.
-3. **Baking**: `DVC pull` is executed *inside* CI to bake the real model into the Docker image.
-4. **Deploy**: Automated SSH deployment to AWS EC2 using modern `docker compose` syntax.
+1. **`ci.yml` (Checks)**: Runs on every push to any branch.
+    - **Linting**: `Ruff` checks for code quality and style.
+    - **Smoke Build**: Verifies that the Docker context is valid and dependencies install correctly.
+2. **`deploy.yml` (Production)**: Runs only on push to `main`.
+    - **DVC Pull**: Dynamically pulls the heavy model artifacts into the build context.
+    - **Registry**: Pushes Git-SHA and `:latest` tagged images to **GitHub Container Registry (GHCR)**.
+    - **CD**: Automated SSH deployment to AWS EC2.
+
+---
+
+## ⚡ MLOps Infrastructure & Efficiency
+
+The project is optimized for "Lean Production" on a CPU-only host:
+
+- **"Slim-ML" Architecture**: Uses `python:3.11-slim` with multi-stage builds.
+- **GPU Bloat Removal**: Automated stripping of `nvidia-*`, `cuda-*`, and `nccl-*` libraries during build, reducing the attack surface and disk footprint.
+- **Disk Optimization**: A comprehensive `.dockerignore` excludes ~2GB of training artifacts (`data/`, `mlruns/`, etc.) from the production image.
+- **Self-Cleaning Deployment**: The deployment script automatically runs `docker image prune -f` after every update to keep the EC2 disk healthy.
 
 ---
 
 ## 🗺️ Roadmap (v2)
 
-- **Live Monitoring Dashboard**: Integrate Grafana to monitor model drift and API latency in real-time.
-- **Auto-Retraining Loop**: Trigger a new DVC pipeline when data drift is detected in production.
-- **Multi-Model Ensemble**: Incorporate LightGBM and XGBoost variants using a voting regressor for higher PR-AUC.
+- **Live Monitoring Dashboard**: Integrate Grafana/Prometheus to monitor model drift and API latency in real-time.
+- **Seldon / Kubernetes Migration**: Transition from Docker Compose to a more robust orchestration for handling traffic spikes.
+- **Feature Store**: Implement a feature store to ensure consistency between training and serving features.
 
 ---
 *Created for portfolio purposes. Demonstrates skills in: Data Engineering, ML Modeling, Docker, CI/CD, and MLOps.*
