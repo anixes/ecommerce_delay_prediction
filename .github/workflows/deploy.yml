@@ -38,17 +38,15 @@ jobs:
 
       - name: Build and push images
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-
           # Build and Push API
-          docker build -t ghcr.io/$REPO_LOWER/api:${{ github.sha }} -t ghcr.io/$REPO_LOWER/api:latest -f docker/Dockerfile.api .
-          docker push ghcr.io/$REPO_LOWER/api:${{ github.sha }}
-          docker push ghcr.io/$REPO_LOWER/api:latest
+          docker build -t ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-api:${{ github.sha }} -t ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-api:latest -f docker/Dockerfile.api .
+          docker push ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-api:${{ github.sha }}
+          docker push ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-api:latest
 
           # Build and Push Dashboard
-          docker build -t ghcr.io/$REPO_LOWER/dashboard:${{ github.sha }} -t ghcr.io/$REPO_LOWER/dashboard:latest -f docker/Dockerfile.dashboard .
-          docker push ghcr.io/$REPO_LOWER/dashboard:${{ github.sha }}
-          docker push ghcr.io/$REPO_LOWER/dashboard:latest
+          docker build -t ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-dashboard:${{ github.sha }} -t ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-dashboard:latest -f docker/Dockerfile.dashboard .
+          docker push ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-dashboard:${{ github.sha }}
+          docker push ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-dashboard:latest
 
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -60,16 +58,11 @@ jobs:
             mkdir -p ecommerce_deploy
             cd ecommerce_deploy
 
-            # Setup .env for docker-compose
-            cat <<EOF > .env
-            IMAGE_TAG=latest
-            EOF
-
             # Setup docker-compose.yml
             cat <<EOF > docker-compose.yml
             services:
               api:
-                image: ghcr.io/${{ github.repository }}/api:\${IMAGE_TAG}
+                image: ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-api:latest
                 container_name: ecommerce_api
                 ports:
                   - "8001:8000"
@@ -86,7 +79,7 @@ jobs:
                   retries: 3
 
               dashboard:
-                image: ghcr.io/${{ github.repository }}/dashboard:\${IMAGE_TAG}
+                image: ghcr.io/${{ github.actor }}/${{ github.event.repository.name }}-dashboard:latest
                 container_name: ecommerce_dashboard
                 ports:
                   - "8502:8501"
