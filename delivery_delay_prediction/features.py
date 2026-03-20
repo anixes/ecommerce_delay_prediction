@@ -99,17 +99,17 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
         # Since they are log-transformed, subtraction equals division in log-space
         df_clean['seller_stress_ratio'] = df_clean['seller_intensity_score'] - df_clean['seller_state_backlog']
 
-    # 8. NEW: Holiday Proximity (Days until/since holiday)
-    if 'order_purchase_timestamp' in df: # Use original df for timestamp
+    # 8. NEW: Holiday Proximity (Vectorized)
+    if 'order_purchase_timestamp' in df: 
         ts = pd.to_datetime(df['order_purchase_timestamp'])
-        holiday_dates = pd.to_datetime(holidays_2016_2018)
+        holiday_dates = np.array(pd.to_datetime(holidays_2016_2018).values, dtype='datetime64[ns]')
         
-        # Calculate days to nearest holiday for each order
-        # (This is a bit expensive but very useful for process delays)
-        def nearest_holiday_dist(d):
-            return min([abs((d - h).days) for h in holiday_dates])
+        # Vectorized nearest holiday calculation
+        # Broadcast subtraction: (N, 1) - (1, M) -> (N, M)
+        ts_values = ts.values[:, np.newaxis]
+        dist_days = np.abs((ts_values - holiday_dates).astype('timedelta64[D]').astype(int))
+        df_clean['days_to_nearest_holiday'] = np.min(dist_days, axis=1)
         
-        df_clean['days_to_nearest_holiday'] = ts.apply(nearest_holiday_dist)
         # High volume risk: order placed within 7 days of a holiday
         df_clean['is_holiday_season'] = (df_clean['days_to_nearest_holiday'] <= 7).astype(int)
 

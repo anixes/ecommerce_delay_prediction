@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from catboost import CatBoostClassifier
+from catboost import CatBoostClassifier, Pool
 from delivery_delay_prediction.config import CATBOOST_TUNED_MODEL, PROCESSED_DATA_DIR, CAT_FEATURES
 from delivery_delay_prediction.features import clean_and_prepare_data
 import uvicorn
@@ -18,6 +18,7 @@ app = FastAPI(
 
 # Initialize globally
 model = None
+# Default minimal set, will be updated from model metadata on load
 MODEL_COLUMNS = [
     'distance_km', 'lead_time_days_estimated', 'total_weight_g', 
     'total_price', 'total_freight', 'seller_avg_review_score',
@@ -30,17 +31,25 @@ def load_resources():
     global model, MODEL_COLUMNS
     try:
         if CATBOOST_TUNED_MODEL.exists():
-            model = CatBoostClassifier().load_model(str(CATBOOST_TUNED_MODEL))
+            model = CatBoostClassifier()
+            model.load_model(str(CATBOOST_TUNED_MODEL))
             logger.info("Loaded real CatBoost model.")
             
-            feat_csv = PROCESSED_DATA_DIR / "features.csv"
-            if feat_csv.exists():
-                df_cols = pd.read_csv(feat_csv, nrows=0)
-                MODEL_COLUMNS = [c for c in df_cols.columns if c not in ['order_id', 'is_late']]
+            # Sync MODEL_COLUMNS with what the model actually expects
+            if hasattr(model, 'feature_names_'):
+                MODEL_COLUMNS = model.feature_names_
+                logger.info(f"Synchronized {len(MODEL_COLUMNS)} features from model metadata.")
+            else:
+                # Fallback to CSV if metadata is missing (unlikely for CatBoost .cbm)
+                feat_csv = PROCESSED_DATA_DIR / "features.csv"
+                if feat_csv.exists():
+                    df_cols = pd.read_csv(feat_csv, nrows=0)
+                    MODEL_COLUMNS = [c for c in df_cols.columns if c not in ['order_id', 'is_late']]
+                    logger.info("Synchronized features from features.csv.")
         else:
-            logger.warning("Model file not found. API running in uninitialized state.")
+            logger.warning(f"Model file not found at {CATBOOST_TUNED_MODEL}. API running in uninitialized state.")
     except Exception as e:
-        logger.error(f"Startup error: {e}")
+        logger.error(f"Startup error loading resources: {e}")
 
 @app.on_event("startup")
 def startup_event():
@@ -94,41 +103,52 @@ def predict(order: OrderInput):
             if col not in df.columns:
                 df[col] = 0.0
         
-        df['order_id'] = "API_REQUEST"
+        # 1. Feature Engineering (adding temporal and interaction features)
         df_processed = clean_and_prepare_data(df)
+        
+        # 2. Alignment: Ensure ALL features expected by model are present
+        # This prevents crashes if clean_and_prepare_data logic drifts from training
+        for col in MODEL_COLUMNS:
+            if col not in df_processed.columns:
+                df_processed[col] = 0.0
+                
+        # 3. Selection and Cat Features Enforcement
         X = df_processed[MODEL_COLUMNS].copy()
         
         for col in CAT_FEATURES:
             if col in X.columns:
                 X[col] = X[col].fillna("UNKNOWN").astype(str)
                 
+        # 4. Inference
         probs = model.predict_proba(X)
-        if hasattr(probs, 'flatten'):
-            # Real model might return a 2D array
-            prob = probs[0, 1]
-        else:
-            # Mock might return a list
-            prob = probs[0][1]
+        prob = float(probs[0, 1]) if hasattr(probs, 'shape') and len(probs.shape) > 1 else float(probs[0][1])
         
-        from catboost import Pool
-        pool = Pool(X, cat_features=[c for c in CAT_FEATURES if c in X.columns])
+        # 5. Explainability (SHAP)
+        # 5. Explainability (SHAP)
+        current_cat_features = [c for c in CAT_FEATURES if c in X.columns]
+        pool = Pool(X, cat_features=current_cat_features)
+        
+        # model.get_feature_importance returns [N_features + 1] values for ShapValues
+        # where the last value is the expected value (bias)
         shap_values = model.get_feature_importance(data=pool, type='ShapValues')[0]
         feature_shap = dict(zip(MODEL_COLUMNS, shap_values[:-1]))
         
+        # Extract top 3 drivers
         top_contributors = sorted(feature_shap.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
         contributors = [
             {
                 "feature": f, 
-                "impact": round(v, 4),
+                "impact": round(float(v), 4),
                 "direction": "increasing" if v >= 0 else "decreasing"
             } for f, v in top_contributors
         ]
         
         return {
-            "delay_probability": round(float(prob), 4),
+            "delay_probability": round(prob, 4),
             "is_high_risk": bool(prob > 0.5),
             "risk_level": "High" if prob > 0.5 else "Moderate" if prob > 0.3 else "Low",
-            "top_risk_factors": contributors
+            "top_risk_factors": contributors,
+            "api_version": "1.1.0"
         }
         
     except Exception as e:
