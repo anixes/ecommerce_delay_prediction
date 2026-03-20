@@ -128,9 +128,11 @@ FEATURE_LABELS = {
 def format_risk_description(feature, direction):
     label = FEATURE_LABELS.get(feature, feature.replace('_', ' ').title())
     if direction == "increasing":
-        return f"{label}: This is currently contributing to a higher risk of delay."
+        return f":red[{label}]: This is contributing to a higher risk of delay."
+    elif "buffer" in feature or "velocity" in feature:
+        return f":blue[{label}]: This factor is in an optimal state for on-time delivery."
     else:
-        return f"{label}: This is helping to keep the delivery on time."
+        return f":green[{label}]: This is significantly helping to keep the delivery on time."
 
 # State Management Initialization
 if 'initialized' not in st.session_state:
@@ -215,12 +217,12 @@ with c1:
 
 with c2:
     st.session_state['seller_state'] = st.selectbox("Seller Territory (State)", ["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "ES"], index=["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "ES"].index(st.session_state['seller_state']))
-    # Restrict to 2016-2018 range to match training data profile
+    # Restrict to full years of Olist dataset for consistency
     st.session_state['purchase_date'] = st.date_input(
         "Order Date", 
         value=st.session_state['purchase_date'],
-        min_value=datetime.date(2016, 9, 4),
-        max_value=datetime.date(2018, 10, 17)
+        min_value=datetime.date(2016, 1, 1),
+        max_value=datetime.date(2018, 12, 31)
     )
     st.session_state['purchase_time'] = st.time_input("Order Time", value=st.session_state['purchase_time'])
 
