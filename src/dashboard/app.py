@@ -83,6 +83,12 @@ st.markdown("""
         .stMetric [data-testid="stMetricValue"] {
             font-size: 1.5rem !important;
         }
+        
+        /* Force input columns to stack on mobile */
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
