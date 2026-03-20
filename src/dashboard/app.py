@@ -8,10 +8,10 @@ from delivery_delay_prediction.config import CAT_FEATURES
 
 # Page configuration
 st.set_page_config(
-    page_title="Delivery Risk Optimizer",
+    page_title="Delivery Optimizer",
     page_icon=None,
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for Premium Dark Theme
@@ -119,6 +119,13 @@ FEATURE_LABELS = {
     "required_velocity": "Transit Urgency"
 }
 
+def format_risk_description(feature, direction):
+    label = FEATURE_LABELS.get(feature, feature.replace('_', ' ').title())
+    if direction == "increasing":
+        return f"{label}: This is currently contributing to a higher risk of delay."
+    else:
+        return f"{label}: This is helping to keep the delivery on time."
+
 # State Management Initialization
 if 'initialized' not in st.session_state:
     st.session_state['initialized'] = True
@@ -132,7 +139,7 @@ if 'initialized' not in st.session_state:
     st.session_state['seller_avg_review_score'] = 4.5
     st.session_state['seller_historical_delay_rate'] = 0.05
     st.session_state['product_category'] = "UNKNOWN"
-    st.session_state['purchase_date'] = datetime.date.today()
+    st.session_state['purchase_date'] = datetime.date(2018, 5, 1) # Default to a valid trained date
     st.session_state['purchase_time'] = datetime.time(10, 0)
 
 def set_preset(name):
@@ -182,44 +189,50 @@ with st.sidebar:
     if st.button("Holiday Rush"): set_preset("Holiday Rush"); st.rerun()
 
 # Main UI
-st.title("📦 Delivery Risk Optimizer")
+st.title("Delivery Risk Optimizer")
 st.markdown("""
 ### Brazilian E-Commerce Logistics (Olist)
-In a marketplace with **98k+ sellers** and millions of customers across Brazil, **delivery delays** are the primary driver of negative reviews and customer churn. 
+In a marketplace with **98k+ sellers** across Brazil, **delivery delays** are the primary driver of customer churn. 
 
-This engine analyzes real-time signals—from regional hub congestion to historical seller reliability—to predict the risk of a late delivery before the package even leaves the warehouse. Use this tool to identify high-risk orders and take proactive measures to ensure customer satisfaction.
+This engine analyzes real-time signals to predict the risk of a late delivery before the package leaves the warehouse. Use this to identify high-risk orders and take proactive measures.
 """)
 
 st.divider()
 
 # Core Inputs
-st.markdown("### 🗺️ Customer & Delivery Context")
+st.markdown("### Customer and Delivery Context")
 c1, c2 = st.columns(2)
 with c1:
-    st.session_state['distance_km'] = st.number_input("Shipping Distance (km)", 0.0, 5000.0, value=st.session_state['distance_km'], help="The physical distance between the seller's hub and the customer's location.")
-    st.session_state['lead_time_days_estimated'] = st.number_input("Estimated Lead Time (days)", 1.0, 60.0, value=st.session_state['lead_time_days_estimated'], help="The delivery timeframe promised to the customer at the time of purchase.")
+    st.session_state['distance_km'] = st.number_input("Shipping Distance (km)", 0.0, 5000.0, value=st.session_state['distance_km'], help="Physical distance between seller hub and customer location.")
+    st.session_state['lead_time_days_estimated'] = st.number_input("Estimated Lead Time (days)", 1.0, 60.0, value=st.session_state['lead_time_days_estimated'], help="Timeframe promised to the customer.")
     st.session_state['customer_state'] = st.selectbox("Customer Territory (State)", ["SP", "RJ", "MG", "RS", "PR", "SC", "BA", "PE", "GO", "ES", "RN"], index=["SP", "RJ", "MG", "RS", "PR", "SC", "BA", "PE", "GO", "ES", "RN"].index(st.session_state['customer_state']))
 
 with c2:
     st.session_state['seller_state'] = st.selectbox("Seller Territory (State)", ["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "ES"], index=["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "ES"].index(st.session_state['seller_state']))
-    st.session_state['purchase_date'] = st.date_input("Order Timestamp (Date)", value=st.session_state['purchase_date'])
-    st.session_state['purchase_time'] = st.time_input("Order Timestamp (Time)", value=st.session_state['purchase_time'])
+    # Restrict to 2016-2018 range to match training data profile
+    st.session_state['purchase_date'] = st.date_input(
+        "Order Date", 
+        value=st.session_state['purchase_date'],
+        min_value=datetime.date(2016, 9, 4),
+        max_value=datetime.date(2018, 10, 17)
+    )
+    st.session_state['purchase_time'] = st.time_input("Order Time", value=st.session_state['purchase_time'])
 
 # Advanced Inputs
-with st.expander("🔍 Seller Performance & Product Risk Factors", expanded=False):
-    st.markdown("*These 'intelligence signals' capture the operational health of the seller at the moment of the order.*")
+with st.expander("Seller Performance and Product Risk Factors", expanded=False):
+    st.markdown("*These signals capture the operational health of the seller at the moment of the order.*")
     a1, a2 = st.columns(2)
     with a1:
         st.markdown("#### Operational Health")
-        st.session_state['seller_avg_review_score'] = st.slider("Seller Quality Score (1-5)", 1.0, 5.0, value=st.session_state['seller_avg_review_score'], help="Historical average customer rating for this seller.")
-        st.session_state['seller_historical_delay_rate'] = st.slider("Historical Delay Rate", 0.0, 1.0, value=st.session_state['seller_historical_delay_rate'], help="Percentage of orders this seller has delivered late in the past.")
-        st.session_state['seller_state_backlog'] = st.slider("Regional Hub Congestion Index", 0.0, 5.0, value=st.session_state['seller_state_backlog'], help="Current volume vs. capacity ratio for the seller's regional shipping hub.")
+        st.session_state['seller_avg_review_score'] = st.slider("Seller Quality Score (1-5)", 1.0, 5.0, value=st.session_state['seller_avg_review_score'])
+        st.session_state['seller_historical_delay_rate'] = st.slider("Historical Delay Rate", 0.0, 1.0, value=st.session_state['seller_historical_delay_rate'])
+        st.session_state['seller_state_backlog'] = st.slider("Regional Hub Congestion Index", 0.0, 5.0, value=st.session_state['seller_state_backlog'])
     with a2:
         st.markdown("#### Package Profile")
         st.session_state['total_weight_g'] = st.number_input("Total Package Weight (g)", 0.0, 50000.0, value=st.session_state['total_weight_g'])
         st.session_state['total_price'] = st.number_input("Order Commercial Value ($)", 0.0, 10000.0, value=st.session_state['total_price'])
         categories = ["health_beauty", "watches_gifts", "bed_bath_table", "sports_leisure", "UNKNOWN"]
-        st.session_state['product_category'] = st.selectbox("Product Line", categories, index=categories.index(st.session_state['product_category']), help="Category of the items in the order, impacting handling and transit times.")
+        st.session_state['product_category'] = st.selectbox("Product Line", categories, index=categories.index(st.session_state['product_category']))
 
 # Check if advanced features are tweaked
 is_advanced_tweaked = any(
@@ -279,16 +292,12 @@ if st.button(button_label, type="primary", use_container_width=True):
                         r1.metric(prob_label, f"{prob*100:.2f}%")
                         r2.metric("Assessment", level)
                         
-                        # Risk Breakdown (SHAP)
+                        # Risk Breakdown
                         if factors:
-                            st.markdown("### 🕵️ Why this risk level?")
-                            st.info("The factors below explain the model's decision-making process based on historical Olist data.")
+                            st.markdown("### Why this risk level?")
+                            st.info("Factors explaining the assessment based on historical logistics data.")
                             for f in factors:
-                                label = FEATURE_LABELS.get(f['feature'], f['feature'].replace('_', ' ').title())
-                                icon = "🔺" if f['direction'] == "increasing" else "🔹"
-                                
-                                desc = "increasing the risk of delay" if f['direction'] == "increasing" else "improving the outlook for on-time arrival"
-                                st.markdown(f"**{icon} {label}**: This factor is currently **{desc}**.")
+                                st.markdown(format_risk_description(f['feature'], f['direction']))
                         
                         if prob > 0.5:
                             st.error(f"High Risk Alert: Predicted delay probability is {prob*100:.1f}%. Immediate intervention required.")
