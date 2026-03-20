@@ -9,9 +9,10 @@ from delivery_delay_prediction.config import CAT_FEATURES, INTERIM_DATA_DIR, PRO
 
 app = typer.Typer()
 
-def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
+def clean_and_prepare_data(df: pd.DataFrame, thresholds: dict = None) -> pd.DataFrame:
     """
     Cleans raw analytical data for CatBoost ingestion.
+    Supports pre-calculated thresholds for outlier capping to ensure API stability.
     """
     logger.info("Starting feature preparation pipeline...")
     
@@ -116,13 +117,23 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     # 9. NEW: Tight Schedule Risk Interaction
     df_clean['tight_schedule_holiday_risk'] = df_clean['required_velocity'] * df_clean['is_holiday']
         
-    # Cap outlier columns at 99.5th percentile
+    # Cap outlier columns
     cap_cols = ['total_price', 'total_freight', 'freight_ratio', 'total_payment', 'dist_backlog_ratio', 'required_velocity']
     for col in cap_cols:
         if col in df_clean.columns:
             # Replace Inf/NaN with 0 before capping
             df_clean[col] = df_clean[col].replace([np.inf, -np.inf], np.nan).fillna(0)
-            p99 = df_clean[col].quantile(0.995)
+            
+            # Use pre-calculated thresholds if available (Stable for API)
+            if thresholds and col in thresholds:
+                p99 = thresholds[col]
+            # Fallback to dynamic calculation if multiple rows present (Usually training/batch)
+            elif len(df_clean) > 1:
+                p99 = df_clean[col].quantile(0.995)
+            # No capping if single row and no thresholds (Avoids self-capping in API)
+            else:
+                continue
+                
             df_clean[col] = np.where(df_clean[col] > p99, p99, df_clean[col])
             
     # Ensure our target is int

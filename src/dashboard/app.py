@@ -207,6 +207,17 @@ This engine analyzes real-time signals to predict the risk of a late delivery be
 
 st.divider()
 
+# Strategic Advice
+with st.expander("How the Analysis Works: Strategic Signal Interaction", expanded=False):
+    st.markdown("""
+    The engine analyzes the interaction between two distinct categories of signals:
+    
+    1.  **The Delivery Baseline (Context)**: This sets the physical "difficulty level." A long route with a tight deadline has a higher baseline risk that no seller can fully eliminate.
+    2.  **The Operational Multiplier (Risk Factors)**: These are the dynamic execution signals. A reliable seller at a low-congestion hub can "overcome" a tough route. If you *don't* include these factors, the model relies only on the baseline difficulty, which might be overly pessimistic or optimistic.
+    
+    **Why include both?** Combining these signals creates a high-fidelity "Digital Twin" of the order's probable journey, allowing for much more granular risk mitigation.
+    """)
+
 # Core Inputs
 st.markdown("### Customer and Delivery Context")
 c1, c2 = st.columns(2)
@@ -313,6 +324,42 @@ if st.button(button_label, type="primary", use_container_width=True):
                             st.warning(f"Warning: Moderate risk detected ({prob*100:.1f}%). Monitor closely.")
                         else:
                             st.success(f"Success: Low risk delivery ({prob*100:.1f}%). On-time arrival expected.")
+
+                        # --- NEW: Sensitivity Analysis ---
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        with st.expander("Strategic Sensitivity Analysis (What-If?)", expanded=True):
+                            st.markdown("How would the risk change if conditions shifted?")
+                            
+                            # Helper for shadow predictions
+                            def get_shadow_prob(mod_payload):
+                                try:
+                                    resp = requests.post(f"{API_URL}/predict", json=mod_payload, timeout=3)
+                                    return resp.json().get("delay_probability")
+                                except: return None
+
+                            s1, s2 = st.columns(2)
+                            
+                            # Scenario 1: Distance Increase (+10%)
+                            with s1:
+                                p1 = payload.copy()
+                                p1['distance_km'] *= 1.1
+                                shadow1 = get_shadow_prob(p1)
+                                if shadow1 is not None:
+                                    diff = (shadow1 - prob) * 100
+                                    color = "inverse" if diff > 0 else "normal"
+                                    st.metric("If Distance +10%", f"{shadow1*100:.1f}%", f"{diff:+.1f}% Risk", delta_color=color)
+                            
+                            # Scenario 2: Lead Time Decrease (-10%)
+                            with s2:
+                                p2 = payload.copy()
+                                p2['lead_time_days_estimated'] *= 0.9
+                                shadow2 = get_shadow_prob(p2)
+                                if shadow2 is not None:
+                                    diff = (shadow2 - prob) * 100
+                                    color = "inverse" if diff > 0 else "normal"
+                                    st.metric("If Lead Time -10%", f"{shadow2*100:.1f}%", f"{diff:+.1f}% Risk", delta_color=color)
+                                    
+                            st.caption("This analysis simulates logistical stress tests to help you understand the sensitivity of this specific order.")
                 else:
                     # Handle API Errors (e.g. 500, 422)
                     try:

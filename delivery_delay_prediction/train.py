@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from catboost import CatBoostClassifier, Pool
@@ -175,6 +176,18 @@ def main(
         fi_df = fi_df.sort_values('importance', ascending=False)
         fi_df.to_csv(MODELS_DIR / "feature_importance.csv", index=False)
         logger.info(f"Top 3 Features: {fi_df.head(3)['feature'].tolist()}")
+
+        # Save Outlier Thresholds for API stability
+        cap_cols = ['total_price', 'total_freight', 'freight_ratio', 'total_payment', 'dist_backlog_ratio', 'required_velocity']
+        thresholds = {}
+        for col in cap_cols:
+            if col in X.columns:
+                thresholds[col] = float(X[col].quantile(0.995))
+        
+        thresholds_path = MODELS_DIR / "feature_thresholds.json"
+        with open(thresholds_path, 'w') as f:
+            json.dump(thresholds, f, indent=4)
+        logger.success(f"Outlier thresholds persisted to: {thresholds_path}")
 
 if __name__ == "__main__":
     app()
