@@ -60,20 +60,19 @@ jobs:
             mkdir -p ecommerce_deploy
             cd ecommerce_deploy
 
-            # Setup docker-compose.yml
+            # Ensure image names are converted to lowercase correctly
+            REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Create/Update docker-compose.yml
             cat <<EOF > docker-compose.yml
+            version: '3.8'
             services:
               api:
-                image: ghcr.io/${{ github.repository }}/api:latest
+                image: ghcr.io/${REPO_LOWER}/api:latest
                 container_name: ecommerce_api
                 ports:
                   - "8001:8000"
                 restart: always
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
                 healthcheck:
                   test: ["CMD", "curl", "-f", "http://localhost:8000/"]
                   interval: 30s
@@ -81,7 +80,7 @@ jobs:
                   retries: 3
 
               dashboard:
-                image: ghcr.io/${{ github.repository }}/dashboard:latest
+                image: ghcr.io/${REPO_LOWER}/dashboard:latest
                 container_name: ecommerce_dashboard
                 ports:
                   - "8502:8501"
@@ -90,11 +89,6 @@ jobs:
                 depends_on:
                   - api
                 restart: always
-                logging:
-                  driver: "json-file"
-                  options:
-                    max-size: "10m"
-                    max-file: "3"
                 healthcheck:
                   test: ["CMD", "curl", "-f", "http://localhost:8501/"]
                   interval: 30s
@@ -102,9 +96,10 @@ jobs:
                   retries: 3
             EOF
 
-            sudo docker compose pull
-            sudo docker compose up -d --force-recreate
-
-            # Automated Cleanup of old images
+            # Optimized Deployment for t2.micro (Sequential)
             sudo docker image prune -f
+            sudo docker compose pull api
+            sudo docker compose pull dashboard
+            sudo docker compose up -d --force-recreate
+            sudo docker image prune -af
             sudo docker ps
