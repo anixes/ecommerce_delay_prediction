@@ -3,7 +3,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc \
+    build-essential gcc curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-prod.txt .
@@ -17,8 +17,9 @@ WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
-# GPU Bloat Removal: Strip CUDA/NVIDIA libraries for CPU-only environment
-RUN find /root/.local/lib/python3.11/site-packages -name "nvidia*" -exec rm -rf {} + && \
+# GPU Bloat Removal and Curl installation for Healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/* && \
+    find /root/.local/lib/python3.11/site-packages -name "nvidia*" -exec rm -rf {} + && \
     find /root/.local/lib/python3.11/site-packages -name "cuda*" -exec rm -rf {} + && \
     find /root/.local/lib/python3.11/site-packages -name "nccl*" -exec rm -rf {} +
 
